@@ -260,6 +260,51 @@
         <!-- PART 3: 论文重点代码/实现解析 (Code & Implementation Analysis)         -->
         <!-- ====================================================================== -->
         <!-- 这是我为你解析的部分。未来你可以将自己的代码分析放在这里。 -->
+        <section id="code-analysis">
+            <h2>论文重点实现解析</h2>
+            <div class="code-analysis">
+                <h3>1. 动作的文本化 (Action Tokenization)</h3>
+                <p>这是实现VLA模型的关键。论文将一个7维的机器人动作（6自由度位移 + 1个夹爪状态）和一个终止命令，全部离散化并映射为文本标记。</p>
+                <pre><code><span class="comment"># 动作空间 (Action Space)</span>
+- 6-DoF position/rotation displacement (末端执行器6自由度位移)
+- Gripper extension (夹爪开合度)
+- Terminate episode (终止指令)
+
+<span class="comment"># 离散化 (Discretization)</span>
+- 每个连续维度被均匀地划分为 <span class="value">256</span> 个桶 (bins)。
+- 因此，一个完整的机器人动作可以表示为 <span class="value">8</span> 个整数。
+
+<span class="comment"># 文本格式 (Text Representation)</span>
+- 动作向量被转换成一个由空格分隔的字符串。
+- 例如: "<span class="token">terminate</span> <span class="token">Δpos_x</span> <span class="token">Δpos_y</span> <span class="token">Δpos_z</span> <span class="token">Δrot_x</span> <span class="token">Δrot_y</span> <span class="token">Δrot_z</span> <span class="token">gripper_state</span>"
+- 实际输出可能像这样: "<span class="value">1 128 91 241 5 101 127 255</span>"
+</code></pre>
+                
+                <h3>2. 联合微调 (Co-finetuning)</h3>
+                <p>为了让模型既不忘记从网络数据中学到的通用知识，又能学会机器人控制，训练时采用了联合微调策略。</p>
+                <pre><code><span class="comment"># 训练数据混合 (Training Data Mix)</span>
+- 机器人轨迹数据 (Robot Trajectories)
+- 网络规模的视觉语言数据 (Web-scale VQA, captioning data, etc.)
+
+<span class="comment"># 关键技术 (Key Technique)</span>
+- 在每个训练批次中，同时包含机器人数据和网络数据。
+- 增加机器人数据的采样权重 (e.g., <span class="value">50%</span> for RT-2-PaLI-X, <span class="value">66%</span> for RT-2-PaLM-E)，以确保模型充分学习控制策略。
+</code></pre>
+
+                <h3>3. 模型输入与输出约束</h3>
+                <p>模型以标准的视觉问答 (VQA) 格式接收任务。</p>
+                <pre><code><span class="comment"># 输入格式 (Input Format)</span>
+- 图像: [robot_camera_image]
+- 文本提示: "问: 机器人应该采取什么行动来 [任务说明]? 答:"
+- 示例: "问: 机器人应该采取什么行动来 <strong>捡起苹果</strong>? 答:"
+
+<span class="comment"># 输出约束 (Output Constraining)</span>
+- 在执行机器人任务时，模型的解码词汇表被限制为仅包含 <span class="value">256</span> 个有效动作标记，确保生成合法的动作指令。
+- 在回答普通VQA问题时，则可以使用完整的词汇表。
+</code></pre>
+
+            </div>
+        </section>
 
         <!-- ====================================================================== -->
         <!-- PART 1: 论文全文翻译 (Full Translation)                                -->
@@ -355,8 +400,6 @@
                 </figure>
             </div>
             <div class="appendix-box">
-                <h3>附录F.1 Evaluation Scenarios</h3>
-                <p>为了以定量的方式研究 RT-2 的涌现能力，我们研究了各种具有挑战性的语义评估场景，旨在衡量推理、符号理解以及人类识别等能力。如图 8 所示，展示了这些场景中的一些子集的可视化预览，并在表 3 中显示了用于定量评估的完整指令列表。</p>
                 <h3>附录F.2 Evaluation Instructions</h3>
                 <p>表 2 列出了在对未见过的对象、背景和环境进行模型评估时使用的自然语言指令。每个指令都在 1-5 次之间运行，具体取决于该评估集中的总指令数。表 3 列出了用于评估定量涌现评估的自然语言指令。每个指令都运行了 5 次。</p>
                 <table class="data-table">

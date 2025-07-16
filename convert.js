@@ -1,21 +1,19 @@
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const path = require('path');
 
 (async () => {
-  const browser = await puppeteer.launch({
-    // 在这里添加 executablePath
-    executablePath: 'C://Users//Congratulations//AppData//Local//Google//Chrome//Application//chrome.exe' //  <-- 注意! 使用双反斜杠'\\'
-  });
+  const browser = await puppeteer.launch();
   const page = await browser.newPage();
   
+  // 'my-paper-notes.html' 是你的HTML文件名
   const htmlPath = path.resolve(__dirname, 'RT-2.html');
   await page.goto(`file://${htmlPath}`, { waitUntil: 'networkidle0' });
   
   await page.pdf({
-    path: 'My-RT2-Notes.pdf', 
+    path: 'My-RT2-Notes.pdf', // 输出的PDF文件名
     format: 'A4',
-    printBackground: true,
-    margin: { 
+    printBackground: true, // 必须为 true 才能打印背景色
+    margin: { // 控制页边距
       top: '0px',
       right: '0px',
       bottom: '0px',
