@@ -8,3 +8,4 @@
 - [ ] CLIP
 - [x] ViT
 - [ ] BERT
+- [ ] Swin Transformer
