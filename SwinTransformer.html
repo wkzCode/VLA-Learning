@@ -623,103 +623,219 @@
         <!-- 这是我为你解析的部分。未来你可以将自己的代码分析放在这里。 -->
         <section id="code-analysis">
             <h2>论文重点实现解析</h2>
-            <p>本文是对哈佛NLP团队实现的<a href="https://github.com/harvardnlp/annotated-transformer">Pytorch版Transformer</a>的源码解析。</p>
             <div class="code-analysis">
-                <h4>LayerNorm</h4>
+                <h4>MLP</h4>
                 <pre><code class="python">
-class LayerNorm(nn.Module):
-    "Construct a layernorm module (See citation for details)."
-
-    def __init__(self, features, eps=1e-6):
-        """
-        features: d_model 512||1024
-        """
-        super(LayerNorm, self).__init__()
-        self.a_2 = nn.Parameter(torch.ones(features))
-        self.b_2 = nn.Parameter(torch.zeros(features))
-        self.eps = eps
+class Mlp(nn.Module):
+    def __init__(self, in_features, hidden_features=None, out_features=None, 
+                    act_layer=nn.GELU, drop=0.):
+        super().__init__()
+        out_features = out_features or in_features
+        hidden_features = hidden_features or in_features
+        self.fc1 = nn.Linear(in_features, hidden_features)
+        self.act = act_layer()
+        self.fc2 = nn.Linear(hidden_features, out_features)
+        self.drop = nn.Dropout(drop)
 
     def forward(self, x):
-        mean = x.mean(-1, keepdim=True)
-        std = x.std(-1, keepdim=True)
-        return self.a_2 * (x - mean) / (std + self.eps) + self.b_2
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.drop(x)
+        x = self.fc2(x)
+        x = self.drop(x)
+        return x
                 </code></pre>
 
-                <a name="Attention"><h4>Attention</h4></a>
+                <a name="Attention"><h4>Window Partition</h4></a>
                 <pre><code class="python">
-def attention(query, key, value, mask=None, dropout=None):
-    "Compute 'Scaled Dot Product Attention'"
-    d_k = query.size(-1)
-    scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
-    if mask is not None:
-        scores = scores.masked_fill(mask == 0, -1e9)
-    p_attn = scores.softmax(dim=-1)
-    if dropout is not None:
-        p_attn = dropout(p_attn)
-    return torch.matmul(p_attn, value), p_attn
+def window_partition(x, window_size):
+    """
+    功能：将 (B, H, W, C) 的特征图分割成多个窗口。
+    Args:
+        x: 输入特征图，形状为 (B, H, W, C) -> (批次大小, 高, 宽, 通道数)
+        window_size (int): 窗口的大小（假设为正方形窗口）
+
+    Returns:
+        windows: 分割后的窗口，形状为 (num_windows*B, window_size, window_size, C)
+    """
+    # 1. 获取输入张量的维度
+    B, H, W, C = x.shape
+    
+    # 2. 关键步骤：重塑张量以分离出窗口
+    # 原始的 H 维度被看作 (H // window_size) 个块，每个块大小为 window_size
+    # 原始的 W 维度也被看作 (W // window_size) 个块，每个块大小为 window_size
+    # 结果形状变为 (B, H/ws, ws, W/ws, ws, C)
+    # ws 是 window_size 的缩写
+    x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
+    
+    # 3. 交换维度，将所有窗口聚合在一起
+    # 目标是将所有属于同一个窗口的像素聚合。
+    # 原始索引: (0, 1, 2, 3, 4, 5) -> B, H/ws, ws, W/ws, ws, C
+    # 交换后索引: (0, 1, 3, 2, 4, 5) -> B, H/ws, W/ws, ws, ws, C
+    # 这样，维度 1 和 3 (H/ws, W/ws) 代表了窗口的网格索引，
+    # 维度 2 和 4 (ws, ws) 代表了窗口内部的像素坐标。
+    windows = x.permute(0, 1, 3, 2, 4, 5).contiguous()
+    
+    # 4. 最后一次重塑，得到最终输出
+    # 将批次大小(B)和窗口数量(H/ws * W/ws)合并到第一个维度。
+    # 这样做的目的是为了让后续的 WindowAttention 模块可以一次性并行处理所有的窗口，
+    # 就好像它们是一个巨大的批次一样，极大地提高了计算效率。
+    # -1 会被自动计算为 B * (H/ws) * (W/ws)
+    windows = windows.view(-1, window_size, window_size, C)
+    
+    return windows
                 </code></pre>
 
-                <a name="Multi-Head Attention"><h4>Multi-Head Attention</h4></a>
+                <a name="Multi-Head Attention"><h4>Window Reverse</h4></a>
                 <pre><code class="python">
-class MultiHeadedAttention(nn.Module):
-    def __init__(self, h, d_model, dropout=0.1):
-        "Take in model size and number of heads."
-        super(MultiHeadedAttention, self).__init__()
-        assert d_model % h == 0
-        # We assume d_v always equals d_k
-        self.d_k = d_model // h # 64
-        self.h = h # 8
-        self.linears = clones(nn.Linear(d_model, d_model), 4)
-        self.attn = None
-        self.dropout = nn.Dropout(p=dropout)
+def window_reverse(windows, window_size, H, W):
+    """
+    功能：将分割后的窗口复原成原始的 (B, H, W, C) 特征图。
+    Args:
+        windows: 经过注意力计算后的窗口, 形状为 (num_windows*B, window_size, window_size, C)
+        window_size (int): 窗口大小
+        H (int): 原始图像的高度
+        W (int): 原始图像的宽度
 
-    def forward(self, query, key, value, mask=None):
-        "Implements Figure 2"
+    Returns:
+        x: 复原后的特征图, 形状为 (B, H, W, C)
+    """
+    # 1. 计算原始的批次大小 B
+    # windows.shape[0] 是 num_windows * B
+    # H * W / window_size / window_size 是每张图片包含的窗口数量 (num_windows_per_image)
+    # 两者相除得到 B
+    B = int(windows.shape[0] / (H * W / window_size / window_size))
+    
+    # 2. 重塑张量，这是 partition 中第4步的逆操作
+    # 将 (B * num_windows, ws, ws, C) 变回 (B, H/ws, W/ws, ws, ws, C)
+    x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
+    
+    # 3. 交换维度，这是 partition 中第3步的逆操作
+    # 原始索引: (0, 1, 2, 3, 4, 5) -> B, H/ws, W/ws, ws, ws, C
+    # 交换后索引: (0, 1, 3, 2, 4, 5) -> B, H/ws, ws, W/ws, ws, C
+    x = x.permute(0, 1, 3, 2, 4, 5).contiguous()
+    
+    # 4. 最后一次重塑，完全恢复原始形状
+    # 这是 partition 中第2步的逆操作
+    x = x.view(B, H, W, -1)
+    
+    return x
+                </code></pre>
+
+                <a name="Position-wise Feed-Forward Networks"><h4>Window Attention</h4></a>
+                <pre><code class="python">
+class WindowAttention(nn.Module):
+    r""" Window based multi-head self attention (W-MSA) module with relative position bias.
+    It supports both of shifted and non-shifted window.
+
+    Args:
+        dim (int): Number of input channels.
+        window_size (tuple[int]): The height and width of the window.
+        num_heads (int): Number of attention heads.
+        qkv_bias (bool, optional):  If True, add a learnable bias to query, key, value. Default: True
+        qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set
+        attn_drop (float, optional): Dropout ratio of attention weight. Default: 0.0
+        proj_drop (float, optional): Dropout ratio of output. Default: 0.0
+    """
+
+    def __init__(self, dim, window_size, num_heads, ...):
+
+        super().__init__()
+        self.dim = dim
+        self.window_size = window_size  # Wh, Ww
+        self.num_heads = num_heads
+        head_dim = dim // num_heads
+        self.scale = qk_scale or (dim // num_heads) ** -0.5
+
+        # --- 核心：相对位置偏置 (Relative Position Bias) ---
+        # 1. 定义一个可学习的参数表，用于存储相对位置偏置
+        # 对于一个大小为 (Wh, Ww) 的窗口，
+        # 高度上的相对位置范围是 [-(Wh-1), Wh-1]，共 2*Wh-1 个值
+        # 宽度上的相对位置范围是 [-(Ww-1), Ww-1]，共 2*Ww-1 个值
+        # 所以总共有 (2*Wh-1)*(2*Ww-1) 种相对位置组合
+        self.relative_position_bias_table = nn.Parameter(
+            torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads))
+
+        # 2. 计算窗口内每个 token 的成对相对位置索引
+        # 这部分代码只在初始化时运行一次，生成一个固定的索引，后续直接使用。
+        coords_h = torch.arange(window_size[0])
+        coords_w = torch.arange(window_size[1])
+        coords = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 形状: (2, Wh, Ww)
+        coords_flatten = torch.flatten(coords, 1)  # 形状: (2, Wh*Ww)
+        
+        # 计算两两之间的坐标差，得到相对坐标
+        relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 形状: (2, Wh*Ww, Wh*Ww)
+        relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # 形状: (Wh*Ww, Wh*Ww, 2)
+        
+        # 将相对坐标转换为从0开始的索引
+        relative_coords[:, :, 0] += window_size[0] - 1  # 高度偏移
+        relative_coords[:, :, 1] += window_size[1] - 1  # 宽度偏移
+        
+        # 将二维索引 (dx, dy) 转换为一维索引，方便查表
+        relative_coords[:, :, 0] *= 2 * window_size[1] - 1
+        relative_position_index = relative_coords.sum(-1)  # 形状: (Wh*Ww, Wh*Ww)
+        
+        # 将这个索引注册为 buffer，它会随模型移动（如.to(device)），但不是可训练参数
+        self.register_buffer("relative_position_index", relative_position_index)
+
+        # 定义 QKV 线性层和输出投影层
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj = nn.Linear(dim, dim)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+        trunc_normal_(self.relative_position_bias_table, std=.02)
+        self.softmax = nn.Softmax(dim=-1)
+    
+    def forward(self, x, mask=None):
+        """
+        Args:
+            x: 输入特征，形状为 (num_windows*B, N, C)，其中 N = Wh*Ww
+            mask: 可选的掩码，用于 shifted window (SW-MSA)，形状为 (num_windows, Wh*Ww, Wh*Ww)
+        """
+        B_, N, C = x.shape
+        
+        # 1. 计算 Q, K, V
+        # self.qkv(x) -> (B_, N, 3*C)
+        # reshape -> (B_, N, 3, num_heads, C_per_head)
+        # permute -> (3, B_, num_heads, N, C_per_head)
+        qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv[0], qkv[1], qkv[2]
+
+        # 2. 计算注意力分数 (Attention Score)
+        q = q * self.scale
+        attn = (q @ k.transpose(-2, -1)) # attn 形状: (B_, num_heads, N, N)
+
+        # 3. 添加相对位置偏置
+        # 使用预先计算好的 relative_position_index 从偏置表 lookup
+        relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
+            N, N, -1)  # Wh*Ww,Wh*Ww,nH
+        relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
+        # 将偏置加到注意力分数上，PyTorch 的广播机制会自动处理 B_ 维度
+        attn = attn + relative_position_bias.unsqueeze(0)
+
+        # 4. 应用掩码 (如果提供了)
+        # 这在 SW-MSA (移动窗口自注意力) 中至关重要，用于阻止不应相互关注的区域进行信息交换
         if mask is not None:
-            # Same mask applied to all h heads.
-            mask = mask.unsqueeze(1)
-        nbatches = query.size(0)
+            nW = mask.shape[0] # nW = num_windows
+            attn = attn.view(B_ // nW, nW, self.num_heads, N, N) + mask.unsqueeze(1).unsqueeze(0)
+            attn = attn.view(-1, self.num_heads, N, N)
+            attn = self.softmax(attn)
+        else:
+            attn = self.softmax(attn)
 
-        # 1) Do all the linear projections in batch from d_model => h x d_k
-        query, key, value = [
-            lin(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
-            for lin, x in zip(self.linears, (query, key, value))
-        ]
+        attn = self.attn_drop(attn)
 
-        # 2) Apply attention on all the projected vectors in batch.
-        x, self.attn = attention(
-            query, key, value, mask=mask, dropout=self.dropout
-        )
-
-        # 3) "Concat" using a view and apply a final linear.
-        x = (
-            x.transpose(1, 2)
-            .contiguous()
-            .view(nbatches, -1, self.h * self.d_k)
-        )
-        del query
-        del key
-        del value
-        return self.linears[-1](x)
-                </code></pre>
-
-                <a name="Position-wise Feed-Forward Networks"><h4>Position-wise Feed-Forward Networks</h4></a>
-                <pre><code class="python">
-class PositionwiseFeedForward(nn.Module):
-    "Implements FFN equation."
-
-    def __init__(self, d_model, d_ff, dropout=0.1):
-        """
-        d_model = 512
-        d_ff = 2048
-        """
-        super(PositionwiseFeedForward, self).__init__()
-        self.w_1 = nn.Linear(d_model, d_ff)
-        self.w_2 = nn.Linear(d_ff, d_model)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        return self.w_2(self.dropout(self.w_1(x).relu()))
+        # 5. 计算加权后的 V
+        # (attn @ v) -> (B_, num_heads, N, C_per_head)
+        # transpose -> (B_, N, num_heads, C_per_head)
+        # reshape -> (B_, N, C)
+        x = (attn @ v).transpose(1, 2).reshape(B_, N, C)
+        
+        # 6. 输出投影
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        return x
                 </code></pre>
 
                 <a name="Embeddings and Softmax"><h4>Embeddings and Softmax</h4></a>
