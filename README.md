@@ -9,3 +9,4 @@
 - [x] ViT
 - [ ] BERT
 - [ ] Swin Transformer
+- [ ] DERT
