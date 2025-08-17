@@ -168,7 +168,7 @@
         .figure-caption, .table-caption {
             background-color: #f1f3f5;
             border: 1px solid var(--border-color);
-            padding: 15px;
+            padding: 10px;
             margin: 20px auto;
             border-radius: 8px;
             font-style: italic;
@@ -347,274 +347,200 @@
                 <p>¹ 查询和键是自注意力层中的投影向量。</p>
                 <p>² 虽然有高效的方法在通用硬件上实现基于滑动窗口的卷积层，这得益于其共享的核权重，但对于基于滑动窗口的自注意力层来说，在实践中实现高效的内存访问是困难的。</p>
             </div>
+            <div class="figure-caption">
+                <figure>
+                    <img src="./SwinTransformer_figs/fig2.png" alt="Language-Table Performance" class="img-large">
+                    <figcaption>图2: 在所提出的Swin Transformer架构中，采用移位窗口方法计算自注意力的示意图。在第l层（左图），采用常规的窗口划分方案，并在每个窗口内计算自注意力。在下一层l+1（右图），窗口划分被移位，从而形成新的窗口。新窗口中的自注意力计算跨越了第l层中先前窗口的边界，实现了它们之间的连接。
+                    </figcaption>
+                </figure>
+            </div>
             <p>微调代码和预训练模型可在 https://github.com/google-research/vision_transformer 获取</p>
 
             <h3>2. Related Work</h3>
-            <p>Transformer由Vaswani等人（2017）为机器翻译提出，并自此成为许多NLP任务中的最先进方法。基于Transformer的大型模型通常在大型语料库上进行预训练，然后针对手头的任务进行微调：BERT（Devlin et al., 2019）使用去噪自监督预训练任务，而GPT系列工作则使用语言建模作为其预训练任务（Radford et al., 2018; 2019; Brown et al., 2020）。</p>
-            <p><strong>将自注意力机制直接应用于图像，需要每个像素都关注到所有其他像素。由于其成本与像素数量成二次方关系，这种方法无法扩展到实际的输入尺寸。</strong>因此，为了在图像处理中应用Transformer，人们尝试了几种近似方法。Parmar等人（2018）仅在每个查询像素的局部邻域内而不是全局应用自注意力。这种局部多头点积自注意力块可以完全替代卷积（Hu et al., 2019; Ramachandran et al., 2019; Zhao et al., 2020）。在另一条研究路线中，稀疏Transformer（Child et al., 2019）采用了可扩展的全局自注意力近似方法，使其能应用于图像。另一种扩展注意力的方法是将其应用于不同大小的块中（Weissenborn et al., 2019），在极端情况下仅沿单个轴应用（Ho et al., 2019; Wang et al., 2020a）。许多这些专门的注意力架构在计算机视觉任务上展示了有希望的结果，但需要复杂的工程才能在硬件加速器上高效实现。</p>
-            <p>与我们最相关的是Cordonnier等人（2020）的模型，该模型从输入图像中提取2×2大小的块，并在其上应用完整的自注意力。这个模型与ViT非常相似，但我们的工作更进一步，证明了大规模预训练使得标准Transformer能够与最先进的CNN相媲美（甚至更好）。此外，Cordonnier等人（2020）使用的是2×2像素的小块尺寸，这使得该模型仅适用于低分辨率图像，而我们则处理中等分辨率的图像。</p>
-            <p>将卷积神经网络（CNN）与各种形式的自注意力相结合也引起了广泛关注，例如，通过增强图像分类的特征图（Bello et al., 2019），或通过自注意力进一步处理CNN的输出，用于目标检测（Hu et al., 2018; Carion et al., 2020）、视频处理（Wang et al., 2018; Sun et al., 2019）、图像分类（Wu et al., 2020）、无监督目标发现（Locatello et al., 2020）或统一的文本-视觉任务（Chen et al., 2020c; Lu et al., 2019; Li et al., 2019）。</p>
-            <p>另一个最近的相关模型是图像GPT（iGPT）（Chen et al., 2020a），它在降低图像分辨率和色彩空间后将Transformer应用于图像像素。该模型以无监督方式作为生成模型进行训练，其产生的表示可以被微调或线性探测用于分类任务，在ImageNet上达到了72%的最高准确率。</p>
-            <p>我们的工作加入了越来越多探索比标准ImageNet更大规模图像识别的论文行列。使用额外的数据源可以在标准基准上取得最先进的结果（Mahajan et al., 2018; Touvron et al., 2019; Xie et al., 2020）。此外，Sun等人（2017）研究了CNN性能如何随数据集大小扩展，Kolesnikov等人（2020）和Djolonga等人（2020）则对从ImageNet-21k和JFT-300M等大规模数据集进行CNN迁移学习进行了实证探索。我们也关注后两个数据集，但我们训练的是Transformer，而不是先前工作中使用的基于ResNet的模型。</p>
-            
+            <p><strong>CNN 及其变体</strong> CNN 在整个计算机视觉领域都是标准的网络模型。虽然 CNN 已经存在了几十年，但直到 AlexNet 的引入，CNN 才得以起飞并成为主流。从那时起，更深、更有效的卷积神经网络被提出来，以进一步推动计算机视觉领域的深度学习浪潮，例如 VGG、GoogleNet、ResNet、DenseNet、HRNet 和 EfficientNet。除了这些架构上的进步，还有很多工作致力于改进单个卷积层，例如深度可分离卷积和可变形卷积。虽然 CNN 及其变体仍然是计算机视觉应用的主要骨干架构，但我们强调了类似 Transformer 的架构在视觉和语言之间统一建模方面的巨大潜力。我们的工作在几个基本的视觉识别任务上取得了强大的性能，我们希望它能为一个建模转变做出贡献。</p>
+            <p><strong>基于自注意力的骨干架构</strong> 同样受到 NLP 领域自注意力层和 Transformer 架构成功的启发，一些工作采用自注意力层来替换流行的 ResNet 中的部分或全部空间卷积层。在这些工作中，自注意力是在每个像素的局部窗口内计算的，以加快优化，它们比对应的 ResNet 架构取得了稍微更好的准确率/FLOPs 权衡。然而，它们昂贵的内存访问导致其实际延迟明显大于卷积网络。我们建议在连续的层之间移动窗口，而不是使用滑动窗口，这允许在通用硬件中更高效地实现。</p>
+            <p><strong>用于补充 CNN 的自注意力/Transformer</strong> 另一条工作路线是用自注意力层或 Transformer 来增强标准的 CNN 架构。自注意力层可以通过提供编码远距离依赖或异构交互的能力来补充骨干网络或头部网络。最近，Transformer 中的编码器-解码器设计已被应用于目标检测和实例分割任务。我们的工作探索了 Transformer 在基本视觉特征提取中的应用，并与这些工作是互补的。</p>
+            <p><strong>基于 Transformer 的视觉骨干网络</strong> 与我们工作最相关的是 Vision Transformer (ViT) 及其后续工作。ViT 的开创性工作直接将 Transformer 架构应用于不重叠的中等大小图像块上进行图像分类。与卷积网络相比，它在图像分类上取得了令人印象深刻的速度-准确率权衡。虽然 ViT 需要大规模训练数据集（即 JFT-300M）才能表现良好，但 DeiT 引入了几种训练策略，使得 ViT 在使用较小的 ImageNet-1K 数据集时也能有效。ViT 在图像分类上的结果是令人鼓舞的，但由于其低分辨率的特征图和计算复杂度随图像大小二次增加，其架构不适合用作密集视觉任务的通用骨干网络，或者当输入图像分辨率高时。有一些工作通过直接上采样或反卷积将 ViT 模型应用于密集视觉任务，如目标检测和语义分割，但性能相对较低。与我们的工作同时进行的一些研究修改了 ViT 架构以获得更好的图像分类效果。根据经验，我们发现我们的 Swin Transformer 架构在图像分类上，在这些方法中取得了最佳的速度-准确率权衡，即使我们的工作侧重于通用性能而非专门针对分类。另一个同期的工作 探索了类似的思路，在 Transformer 上构建多分辨率特征图。它的复杂度仍然是图像大小的二次方，而我们的是线性的，并且我们的方法在局部操作，这在建模视觉信号中的高相关性方面已被证明是有益的。我们的方法既高效又有效，在 COCO 目标检测和 ADE20K 语义分割上都取得了最先进的准确率。</p>
+                        
             <h3>3. Method</h3>
-            <p>在模型设计中，我们尽可能地遵循原始的Transformer（Vaswani et al., 2017）。这种有意简化的一个优势是，可扩展的NLP Transformer架构及其高效实现几乎可以开箱即用。</p>
-            <h4>3.1. Vision Transformer (ViT)</h4>
-            <p>模型的概览如图1所示。标准Transformer接收一个1D的标记嵌入序列作为输入。为了处理2D图像，我们将图像 \(x ∈ ℝ^{H×W×C}\) 重塑为一个扁平化的2D图像块序列 \(x_p ∈ ℝ^{N×(P²·C)}\)，其中(H, W)是原始图像的分辨率，C是通道数，(P, P)是每个图像块的分辨率，N = HW/P² 是产生的图像块数量，也作为Transformer的有效输入序列长度。Transformer在其所有层中使用恒定的潜向量大小D，因此我们将图像块展平并通过一个可训练的线性投影映射到D维（公式1）。我们称这个投影的输出为块嵌入（patch embeddings）。</p>
-            <p>$$z_0=[x_{class};\ x_p^1E;\ x_p^2E;\ ...;\ x_p^NE]+E_{pos} $$</p>
-            <p>$$E ∈ ℝ^{D×(P²·C)},\ E_{pos}∈ ℝ^{(N+1)×D}$$</p>
-
-            <p>与BERT的[class]标记类似，我们在嵌入的块序列前添加一个可学习的嵌入(\(z_0^0 = x_{class}\))，其在Transformer编码器输出端的状态(\(z_L^0\))作为图像表示y（公式4）。在预训练和微调期间，一个分类头都附加在\(z_L^0\)上。该分类头在预训练时由一个带单隐藏层的MLP实现，在微调时由一个单线性层实现。</p>
-            <p>$$y=LN(z_L^0)$$</p>
-            <p>位置嵌入被添加到块嵌入中以保留位置信息。我们使用标准的可学习的1D位置嵌入，因为我们没有观察到使用更先进的2D感知位置嵌入会带来显著的性能提升（附录D.4）。最终的嵌入向量序列作为编码器的输入。</p>
-            <div class="appendix-box">
-                <h4>附录D.4 Positional Embedding</h4>
-                <p>我们对使用位置嵌入编码空间信息的不同方式进行了消融研究。我们尝试了以下情况：</p>
-                <ul>
-                    <li><strong>无位置信息：</strong>将输入视为一袋子块（bag of patches）。</li>
-                    <li><strong>一维位置嵌入：</strong>将输入视为光栅顺序的块序列（本文所有其他实验的默认设置）。</li>
-                    <li><strong>二维位置嵌入：</strong>将输入视为二维的块网格。在这种情况下，会学习两组嵌入，分别对应X轴和Y轴，每组大小为D/2。然后，根据输入中块的坐标，我们将X和Y嵌入拼接起来，得到最终的位置嵌入。</li>
-                    <li><strong>相对位置嵌入：</strong>考虑到块之间的相对距离，而不是它们的绝对位置来编码空间信息。为此，我们使用一维相对注意力，在其中定义所有可能的块对之间的相对距离。因此，对于给定的一组对（一个用作查询，另一个用作注意机制中的键/值），我们有一个偏移量 \(p_q-p_k\)，每个偏移量都与一个嵌入相关联。然后，我们简单地运行额外的注意力，使用原始查询（查询的内容），但使用相对位置嵌入作为键。然后，我们将来自相对注意力的对数几率作为偏差项添加到主注意力（基于内容的注意力）的对数几率中，然后再应用softmax。</li>
-                </ul>
-                <p>除了不同的空间信息编码方式外，我们还尝试了在模型中嵌入这些信息的不同方法。对于一维和二维位置嵌入，我们尝试了三种情况：(1) 在输入后和在将输入馈送到Transformer编码器（本论文中的所有其他实验默认使用）之前直接添加位置嵌入；(2) 在每个层开始时学习并添加位置嵌入；(3) 在每个层开始时将学习到的位置嵌入添加到输入中（各层共享）。</p>
-                <p>表8总结了在ViT-B/16模型上进行的消融研究的结果。正如我们所看到的，尽管没有位置编码的模型与具有位置编码的模型之间的性能存在很大差距，但不同方式对位置信息进行编码之间几乎没有差异。我们推测，由于我们的Transformer 编码器是在像素级别的输入而不是像块级别这样的输入上运行的，因此如何编码空间信息的差异不那么重要。更准确地说，在像素级别的输入中，空间维度比原始像素级别的输入小得多，例如 14x14 与 224x224，学习在这个分辨率下表示空间关系对于这些不同的位置编码策略来说同样容易。尽管如此，网络学到的具体的位置嵌入相似性模式取决于训练超参数（图10）。</p>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/tab8.png" alt="Language-Table Performance" class="img-large">
-                        <figcaption>表8：在ImageNet 5-shot线性评估中，使用ViT-B/16模型对位置嵌入进行消融研究的结果。</figcaption>
-                    </figure>
-                </div>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/fig10.png" alt="Language-Table Performance">
-                        <figcaption>图10：使用不同超参数训练的模型的位置嵌入。</figcaption>
-                    </figure>
-                </div>
+            <h4>3.1. Overall Architecture</h4>
+            <p>Swin Transformer 架构的概述如图 3 所示，其中展示了微型版本（Swin-T）。它首先通过一个像 ViT 一样的切片模块（patch splitting module）将输入的 RGB 图像分割成不重叠的图像块。每个图像块被视为一个“令牌”（token），其特征被设置为原始像素 RGB 值的拼接。在我们的实现中，我们使用 4 × 4 的块大小，因此每个块的特征维度是 4 × 4 × 3 = 48。一个线性嵌入层（linear embedding layer）被应用于这个原始值特征，以将其投影到任意维度（表示为 C）。</p>
+            <div class="figure-caption">
+                <figure>
+                    <img src="./SwinTransformer_figs/fig3.png" alt="Language-Table Performance">
+                    <figcaption>图3: (a) Swin Transformer(Swin-T)的架构；(b) 两个连续的Swin Transformer模块（符号表示见式(3)）。W-MSA和SW-MSA分别是具有常规窗口和移位窗口配置的多头自注意力模块。
+                    </figcaption>
+                </figure>
             </div>
-            <p>Transformer编码器（Vaswani et al., 2017）由交替的多头自注意力（MSA，见附录A）和MLP块（公式2, 3）构成。在每个块之前应用层归一化（LayerNorm, LN），每个块之后应用残差连接（Wang et al., 2019; Baevski & Auli, 2019）。</p>
-            <p>$$z_l'=MSA(LN(z_{l-1}))+z_{l-1}$$</p>
-            <p>$$z_l=MLP(LN(z_l'))+z_l'$$</p>
-            <p>$$l=1...L$$</p>
-            <div class="appendix-box">
-                <h4>附录A Multihead Self-Attention</h4>
-                <p>标准的“查询-键-值”(qkv)自注意力（SA, Vaswani et al., 2017）是神经网络架构中一个流行的构建模块。对于输入序列中的每个元素 \(z ∈ ℝ^{N×D}\)，我们计算序列中所有值 v 的加权和。注意力权重 \(A_{ij}\) 基于序列中两个元素及其各自的查询 \(q^i\) 和键 \(k^j\) 表示之间的成对相似度。</p>
-                <p>$$[q,k,v]=zU_{qkv},\ U_{qkv}∈ ℝ^{D×3D_h}$$</p>
-                <p>$$A=softmax(qk^T/\sqrt{D_h}),\ A∈ℝ^{N×N}$$</p>
-                <p>$$SA(z)=Av$$</p>
-                <p>多头自注意力（MSA）是SA的一种扩展，其中我们并行运行 k 个自注意力操作（称为“头”），并对它们拼接后的输出进行投影。为了在改变 k 时保持计算量和参数数量不变，\(D_h\)（公式5）通常被设置为 D/k。</p>
-                <p>$$MSA(z)=[SA_1(z);SA_2(z);...SA_k(z)]U_{msa}$$</p>
-                <p>$$U_{msa}∈ ℝ^{k×D_h×D}$$</p>
-            </div>
-            <p><strong>归纳偏置。</strong>我们注意到，Vision Transformer比CNN具有少得多的图像特异性归纳偏见。在CNN中，局部性、二维邻域结构和平移等变性被嵌入到模型的每一层中。而在ViT中，只有MLP层是局部和平移等变的，自注意力层则是全局的。二维邻域结构用得非常少：在模型开始时通过将图像切成块，以及在微调时为适应不同分辨率图像而调整位置嵌入时（如下所述）。除此之外，初始化时的位置嵌入不携带关于块的2D位置信息，所有块之间的空间关系都必须从头学习。</p>
-            <p><strong>混合架构。</strong>作为原始图像块的替代方案，输入序列可以由CNN的特征图构成。在这种混合模型中，块嵌入投影E（公式1）应用于从CNN特征图中提取的块。在特殊情况下，块的空间大小可以是1x1，这意味着输入序列是通过简单地将特征图的空间维度展平并投影到Transformer维度来获得的。分类输入嵌入和位置嵌入如上所述添加。</p>
+            <p>在这些图像块令牌上应用了几个带有改进自注意力计算的 Transformer 模块（Swin Transformer 模块）。Transformer 模块保持了令牌的数量 (\(H/4 × W/4\))，并与线性嵌入层一起被称为“阶段 1”。</p>
+            <p>为了产生层次化表示，随着网络加深，令牌的数量通过图像块合并层（patch merging layers）来减少。第一个图像块合并层将每组 2 × 2 相邻图像块的特征连接起来，并在 4C 维的连接特征上应用一个线性层。这将令牌数量减少了 2 × 2 = 4 倍（分辨率的 2 倍下采样），输出维度被设置为 2C。之后应用 Swin Transformer 模块进行特征转换，分辨率保持在 \(H/8 × W/8\)。这个图像块合并和特征转换的第一个模块被称为“阶段 2”。这个过程重复两次，作为“阶段 3”和“阶段 4”，输出分辨率分别为 \(H/16 × W/16\) 和 \(H/32 × W/32\)。这些阶段共同产生一个层次化的表示，其特征图分辨率与典型的卷积网络（例如 VGG 和 ResNet）相同。因此，我们提出的架构可以方便地替换现有方法中用于各种视觉任务的骨干网络。</p>
+            <p>Swin Transformer 模块 Swin Transformer 是通过将标准 Transformer 模块中的标准多头自注意力（MSA）模块替换为基于移动窗口的模块（在 3.2 节中描述）而构建的，其他层保持不变。如图 3(b) 所示，一个 Swin Transformer 模块由一个基于移动窗口的 MSA 模块组成，后面跟着一个中间带有 GELU 非线性的 2 层 MLP。在每个 MSA 模块和每个 MLP 之前都应用了一个 LayerNorm (LN) 层，并且在每个模块之后都应用了一个残差连接。</p>
 
-            <h4>3.2. Fine-Tuning and Higher Resolution</h4>
-            <p>通常，我们在大数据集上预训练ViT，然后微调到（较小的）下游任务。为此，我们移除预训练的预测头，并附加一个零初始化的D×K前馈层，其中K是下游任务的类别数。以比预训练时更高的分辨率进行微调通常是有益的（Touvron et al., 2019; Kolesnikov et al., 2020）。当输入更高分辨率的图像时，我们保持块大小不变，这会导致更长的有效序列长度。Vision Transformer可以处理任意序列长度（受内存限制），但预训练的位置嵌入可能不再有意义。因此，我们根据它们在原始图像中的位置对预训练的位置嵌入进行2D插值。请注意，这种分辨率调整和块提取是ViT中唯一手动注入关于图像2D结构归纳偏见的地方。</p>
-            
+            <h4>3.2. Shifted Window based Self-Attention</h4>
+            <p>标准的 Transformer 架构 及其在图像分类中的应用[11] 都进行全局自注意力计算，即计算一个令牌与所有其他令牌之间的关系。全局计算导致了与令牌数量成二次方的复杂度，使其不适合于许多需要大量令牌进行密集预测或表示高分辨率图像的视觉问题。</p>
+            <p><strong>非重叠窗口中的自注意力</strong> 为了高效建模，我们建议在局部窗口内计算自注意力。这些窗口被安排成以不重叠的方式均匀地划分图像。假设每个窗口包含 \(M × M\) 个图像块，一个全局 MSA 模块和一个基于窗口的模块在一个 \(h × w\) 个图像块的图像上的计算复杂度³分别为：</p>
+            <p>$$\Omega(MSA)=4hwC^2+2(hw)^2C$$</p>
+            <p>$$\Omega(W-MSA)=4hwC^2+2M^2hwC$$</p>
+            <p>其中前者对于图像块数量 hw 是二次的，而后者在 M 固定时（默认设置为 7）是线性的。对于大的 hw，全局自注意力计算通常是不可负担的，而基于窗口的自注意力是可扩展的。</p>
+            <div class="appendix-box">
+                <p>³ 我们在确定复杂度时省略了 SoftMax 的计算。</p>
+            </div>
+            <p><strong>连续模块中的移动窗口分区</strong> 基于窗口的自注意力模块缺乏跨窗口的连接，这限制了其建模能力。为了在保持非重叠窗口高效计算的同时引入跨窗口连接，我们提出了一种移动窗口分区方法，该方法在连续的 Swin Transformer 模块中交替使用两种分区配置。</p>
+            <p>如图 2 所示，第一个模块使用常规的窗口分区策略，从左上角像素开始，将 8 × 8 的特征图均匀地划分为 2 × 2 个大小为 4 × 4 (M = 4) 的窗口。然后，下一个模块采用一个从前一层移位的窗口配置，通过将窗口从规则分区的窗口位移 (\(⌊M/2⌋, ⌊M/2⌋\)) 个像素来实现。</p>
+            <p>通过移动窗口分区方法，连续的 Swin Transformer 模块计算如下：</p>
+            <p>$$ẑˡ = W-MSA(LN(zˡ⁻¹)) + zˡ⁻¹$$</p>
+            <p>$$zˡ = MLP(LN(ẑˡ)) + ẑˡ$$</p>
+            <p>$$ẑˡ⁺¹ = SW-MSA(LN(zˡ)) + zˡ$$</p>
+            <p>$$zˡ⁺¹ = MLP(LN(ẑˡ⁺¹)) + ẑˡ⁺¹$$</p>
+            <p>其中 ẑˡ 和 zˡ 分别表示块 l 的 (S)WMSA 模块和 MLP 模块的输出特征；W-MSA 和 SW-MSA 分别表示使用常规和移动窗口分区配置的基于窗口的多头自注意力。</p>
+            <p>移动窗口分区方法引入了前一层相邻不重叠窗口之间的连接，并被发现在图像分类、目标检测和语义分割中是有效的，如表 4 所示。</p>
+            <p><strong>移动配置的高效批处理计算</strong> 移动窗口分区的一个问题是它会导致更多的窗口，从 \(⌈h/M⌉ × ⌈w/M⌉\) 到 \((⌈h/M⌉+1) × (⌈w/M⌉+1)\) 个，并且一些窗口会比 \(M × M\) 小⁴。一个简单的解决方案是将较小的窗口填充到 \(M × M\) 的大小，并在计算注意力时屏蔽掉填充的值。当常规分区的窗口数量很少时，例如 2 × 2，这个简单解决方案带来的计算增加是可观的（2 × 2 → 3 × 3，增加了 2.25 倍）。在这里，我们提出了一种更高效的批处理计算方法，通过向左上方向循环移位，如图 4 所示。经过这次移位后，一个批处理的窗口可能由几个在特征图中不相邻的子窗口组成，因此采用了一个掩蔽机制，将自注意力的计算限制在每个子窗口内。通过循环移位，批处理窗口的数量与常规窗口分区的数量保持相同，因此也是高效的。这种方法的低延迟如表 5 所示。</p>
+            <div class="appendix-box">
+                <p>⁴ 为了使窗口大小 (M, M) 能被特征图大小 (h, w) 整除，如果需要，会在特征图的右下角进行填充。</p>
+            </div>            
+            <p><strong>相对位置偏置</strong> 在计算自注意力时，我们遵循[10] 的做法，在计算相似度时为每个头加入一个相对位置偏置 \(B ∈ ℝ^{M²×M²}\)：</p>
+            <p>$$Attention(Q, K, V) = SoftMax(QKᵀ/\sqrt d + B)V$$</p>
+            <p>其中 \(Q, K, V ∈ ℝ^{M²×d}\) 是查询、键和值矩阵；d 是查询/键的维度，\(M²\) 是一个窗口中的图像块数量。由于沿每个轴的相对位置在 \([-M+1, M-1]\) 范围内，我们参数化一个更小尺寸的偏置矩阵 \(B̂ ∈ ℝ^{(2M-1)×(2M-1)}\)，B 中的值取自 B̂。</p>
+            <p>我们观察到，相比于没有这个偏置项或使用绝对位置嵌入的对应模型，有显著的改进，如表 4 所示。进一步像[11] 中那样向输入添加绝对位置嵌入会略微降低性能，因此在我们的实现中没有采用。</p>
+            <p>预训练中学习到的相对位置偏置也可以用于初始化一个模型，以便用不同的窗口大小进行微调，方法是双三次插值。</p>
+
+            <h4>3.3. Architecture Variants</h4>
+            <p>我们构建了我们的基础模型，称为 Swin-B，其模型大小和计算复杂度与 ViT-B/DeiT-B 相似。我们还引入了 Swin-T、Swin-S 和 Swin-L，它们分别是大约 0.25 倍、0.5 倍和 2 倍模型大小和计算复杂度的版本。请注意，Swin-T 和 Swin-S 的复杂度分别与 ResNet-50 (DeiT-S) 和 ResNet-101 相似。窗口大小默认设置为 M = 7。每个头的查询维度为 d = 32，每个 MLP 的扩展层 α = 4，适用于所有实验。这些模型变体的架构超参数是：</p>
+            <ul>
+                <li>Swin-T: C = 96, layer numbers = {2, 2, 6, 2}</li>
+                <li>Swin-S: C = 96, layer numbers ={2, 2, 18, 2}</li>
+                <li>Swin-B: C = 128, layer numbers ={2, 2, 18, 2}</li>
+                <li>Swin-L: C = 192, layer numbers ={2, 2, 18, 2}</li>
+            </ul>
+            <p>其中 C 是第一阶段隐藏层的通道数。模型大小、理论计算复杂度 (FLOPs) 和 ImageNet 图像分类模型变体的吞吐量列在表 1 中。</p>
+            <div class="figure-caption">
+                <figure>
+                    <img src="./SwinTransformer_figs/tab1.png" alt="Language-Table Performance" class="img-large">
+                    <figcaption>表1. 不同骨干网络在ImageNet-1K分类任务上的比较。吞吐量的测量采用[68]的GitHub仓库和V100 GPU，参考[63]。
+                    </figcaption>
+                </figure>
+            </div>
+
             <h3>4. Experiments</h3>
-            <p>我们评估了ResNet、Vision Transformer（ViT）以及混合架构的表示学习能力。为了理解每个模型的数据需求，我们在不同规模的数据集上进行预训练，并评估了多个基准测试任务。当考虑到预训练的计算成本时，ViT的表现非常出色，在大多数识别基准上以更低的预训练成本达到了业界顶尖水平。最后，我们进行了一个使用自监督的小型实验，并表明自监督的ViT在未来有很大的潜力。</p>
-            <h4>4.1. Setup</h4>
-            <p><strong>数据集。</strong>为了探索模型的可扩展性，我们使用了包含1千个类别和130万张图像的ILSVRC-2012 ImageNet数据集（下文我们称之为ImageNet），其超集ImageNet-21k包含2.1万个类别和1400万张图像（Deng et al., 2009），以及包含1.8万个类别和3.03亿张高分辨率图像的JFT数据集（Sun et al., 2017）。我们遵循Kolesnikov等人（2020）的方法，对预训练数据集相对于下游任务的测试集进行了去重处理。我们将这些数据集上训练的模型迁移到几个基准测试任务上：带有原始验证标签的ImageNet和经过清理的ReaL标签（Beyer et al., 2020）、CIFAR-10/100（Krizhevsky, 2009）、Oxford-IIIT Pets（Parkhi et al., 2012）和Oxford Flowers-102（Nilsback & Zisserman, 2008）。对于这些数据集，预处理遵循Kolesnikov等人（2020）的方法。</p>
-            <p>我们还在包含19个任务的VTAB分类套件上进行了评估（Zhai et al., 2019b）。VTAB评估的是向多样化任务的低数据量迁移能力，每个任务使用1000个训练样本。这些任务分为三组：自然 (Natural)——像上面提到的Pets、CIFAR等任务；专业 (Specialized)——医学和卫星图像；以及结构化 (Structured)——需要几何理解（如定位）的任务。</p>
-            <p><strong>模型变体。</strong>我们基于用于BERT的模型配置来设置ViT的配置（Devlin et al., 2019），如表1所示。“Base”和“Large”模型直接从BERT中借鉴，我们还增加了一个更大的“Huge”模型。在下文中，我们使用简短的表示法来指明模型大小和输入块大小：例如，ViT-L/16表示使用16×16输入块大小的“Large”变体。注意，Transformer的序列长度与块大小的平方成反比，因此块大小较小的模型在计算上更昂贵。</p>
+            <p>我们在 ImageNet-1K 图像分类、COCO 目标检测 和 ADE20K 语义分割 上进行了实验。在接下来的部分，我们首先将提出的 Swin Transformer 架构与之前在三个任务上的最先进技术进行比较。然后，我们对 Swin Transformer 的重要设计元素进行消融研究。</p>
+            <h4>4.1. Image Classification on ImageNet-1K</h4>
+            <p><strong>设置</strong> 对于图像分类，我们在 ImageNet-1K 上对提出的 Swin Transformer 进行基准测试，该数据集包含 128 万张训练图像和 5 万张验证图像，来自 1000 个类别。报告的是单个裁剪图像的 top-1 准确率。我们考虑两种训练设置：</p>
+            <ul>
+                <li><strong>常规 ImageNet-1K 训练。</strong> 这个设置主要遵循。我们使用 AdamW 优化器进行 300 个周期的训练，使用余弦衰减学习率调度器和 20 个周期的线性热身。批处理大小为 1024，初始学习率为 0.001，权重衰减为 0.05。我们包含了 中的大多数增强和正则化策略，除了重复增强 和 EMA，它们没有提升性能。注意，这与 相反，其中重复增强对于稳定 ViT 的训练至关重要。</li>
+                <li><strong>在 ImageNet-22K 上预训练并在 ImageNet-1K 上微调。</strong> 我们还在更大的 ImageNet-22K 数据集上进行预训练，该数据集包含 1420 万张图像和 22K 个类别。我们使用 AdamW 优化器进行 90 个周期的训练，使用线性衰减学习率调度器和 5 个周期的线性热身。批处理大小为 4096，初始学习率为 0.001，权重衰减为 0.01。在 ImageNet-1K 微调中，我们训练模型 30 个周期，批处理大小为 1024，恒定学习率为 10⁻⁵，权重衰减为 10⁻⁸。</li>
+            </ul>
+            <p><strong>常规 ImageNet-1K 训练结果</strong> 表 1(a) 展示了与其他骨干网络的比较，包括基于 Transformer 和基于 ConvNet 的网络，使用常规 ImageNet-1K 训练。与之前的最先进的基于 Transformer 的架构，即 DeiT 相比，Swin Transformers 在相似的复杂度下显著超过了对应的 DeiT 架构：Swin-T (81.3%) 比 DeiT-S (79.8%) 在 224² 输入上高出 +1.5%，Swin-B (83.3%/84.5%) 比 DeiT-B (81.8%/83.1%) 在 224²/384² 输入上分别高出 +1.5%/1.4%。与最先进的 ConvNets，即 RegNet 和 EfficientNet 相比，Swin Transformer 实现了稍好的速度-准确率权衡。注意到虽然 RegNet 和 EfficientNet 是通过彻底的架构搜索获得的，但提出的 Swin Transformer 是从标准 Transformer 改编而来的，并且有进一步改进的巨大潜力。</p>
+            <p><strong>ImageNet-22K 预训练结果</strong> 我们还预训练了更大容量的 Swin-B 和 Swin-L 在 ImageNet-22K 上。在 ImageNet-1K 图像分类上微调的结果如表 1(b) 所示。对于 Swin-B，ImageNet-22K 预训练比从头开始在 ImageNet-1K 上训练带来了 1.8%~1.9% 的增益。与之前 ImageNet-22K 预训练的最佳结果相比，我们的模型取得了明显更好的速度-准确率权衡：Swin-B 获得了 86.4% 的 top-1 准确率，比相似推理吞吐量的 ViT (84.7 vs. 85.9 images/sec) 高出 2.4%，并且 FLOPs 稍低 (47.0G vs. 55.4G)。更大的 Swin-L 模型达到了 87.3% 的 top-1 准确率，比 Swin-B 模型高出 +0.9%。</p>
+            
+            <h4>4.2. Object Detection on COCO</h4>
+            <p><strong>设置</strong> 目标检测和实例分割实验在 COCO 2017 上进行，该数据集包含 118K 训练、5K 验证和 20K 测试开发图像。消融研究使用验证集进行，并在测试开发集上报告系统级比较。对于消融研究，我们考虑四种典型的目标检测框架：Cascade Mask R-CNN、ATSS、RepPoints v2 和 Sparse RCNN in mmdetection。对于这四种框架，我们使用相同的设置：多尺度训练（将输入大小调整为短边在 480 到 800 之间，长边最多为 1333），AdamW 优化器（初始学习率 0.0001，权重衰减 0.05，批处理大小 16），和 3x 调度（36 个周期）。对于系统级比较，我们采用了一个改进的 HTC（表示为 HTC++），带有 instaboost、更强的多尺度训练、6x 调度（72 个周期）、soft-NMS 和 ImageNet-22K 预训练模型作为初始化。我们比较我们的 Swin Transformer 和标准的 ConvNets，即 ResNe(X)t，以及之前的 Transformer 网络，即 DeiT。比较是通过只改变骨干网络而其他设置不变来进行的。请注意，虽然 Swin Transformer 和 ResNe(X)t 由于其分层的特征图可以直接应用于所有上述框架，但 DeiT 只产生单一分辨率的特征图，不能直接应用。为了公平比较，我们遵循 的做法，使用反卷积层为 DeiT 构建分层特征图。</p>
+            <p><strong>与 ResNe(X)t 的比较</strong> 表 2(a) 列出了 Swin-T 和 ResNet-50 在四种目标检测框架上的结果。我们的 Swin-T 架构比 ResNet-50 带来了持续的 +3.4~4.2 box AP 增益，模型大小、FLOPs 和延迟略大。表 2(b) 使用 Cascade Mask R-CNN 在不同模型容量下比较 Swin Transformer 和 ResNe(X)t。Swin Transformer 取得了 51.9 box AP 和 45.0 mask AP 的高检测准确率，这比具有相似模型大小、FLOPs 和延迟的 ResNeXt101-64x4d 高出 +3.6 box AP 和 +3.3 mask AP。在一个使用改进 HTC 框架的更高基线上，52.3 box AP 和 46.0 mask AP，Swin Transformer 的增益也很高，分别为 +4.1 box AP 和 +3.1 mask AP（见表 2(c)）。关于推理速度，虽然 ResNe(X)t 是由高度优化的 Cudnn 函数构建的，但我们的架构是用并非都经过良好优化的内置 PyTorch 函数实现的。彻底的核优化超出了本文的范围。</p>
             <div class="figure-caption">
                 <figure>
-                    <img src="./ViT_figs/tab1.png" alt="Language-Table Performance">
-                    <figcaption>表1：Vision Transformer模型变体的详细信息。</figcaption>
+                    <img src="./SwinTransformer_figs/tab2.png" alt="Language-Table Performance">
+                    <figcaption>图2：COCO目标检测与实例分割结果。†表示使用了额外的解卷积层以生成分层特征图。*表示多尺度测试。</figcaption>
                 </figure>
             </div>
-            <p>对于基线CNN，我们使用ResNet（He et al., 2016），但将批归一化（Batch Normalization）层（Ioffe & Szegedy, 2015）替换为组归一化（Group Normalization）层（Wu & He, 2018），并使用了标准化的卷积（Qiao et al., 2019）。这些修改改善了迁移性能（Kolesnikov et al., 2020），我们将修改后的模型称为“ResNet (BiT)”。对于混合模型，我们将中间特征图输入到ViT中，块大小为一个“像素”。为了实验不同的序列长度，我们要么（i）取一个常规ResNet50的第4阶段的输出，要么（ii）移除第4阶段，在第3阶段放置相同数量的层（保持总层数不变），并取这个扩展后的第3阶段的输出。选项（ii）会产生一个4倍长的序列长度，和一个计算上更昂贵的ViT模型。</p>
-            <p><strong>训练与微调。</strong>我们使用Adam（Kingma & Ba, 2015）优化器训练所有模型，包括ResNet，其中β₁=0.9，β₂=0.999，批大小为4096，并应用了0.1的高权重衰减，我们发现这对所有模型的迁移都很有用（附录D.1显示，与常见做法相反，在我们的设置中Adam比SGD对ResNet的效果略好）。我们使用线性的学习率预热（warmup）和衰减，详见附录B.1。对于微调，我们对所有模型使用带动量的SGD，批大小为512，详见附录B.1.1。</p>
-            <div class="appendix-box">
-                <h4>附录D.1 SGD VS. Adam for Resnets</h4>
-                <p>ResNet通常使用SGD进行训练，我们使用Adam作为优化器是相当不寻常的。这里我们展示了促使我们做出这一选择的实验。具体来说，我们比较了使用SGD和Adam在JFT上预训练的两个ResNet——50x1和152x2——的微调性能。对于SGD，我们使用Kolesnikov等人（2020）推荐的超参数。结果呈现在表7中。在大多数数据集和平均性能上，Adam预训练优于SGD预训练。这证明了我们选择Adam作为在JFT上预训练ResNet的优化器的合理性。注意，绝对数值低于Kolesnikov等人（2020）报告的数值，因为我们只预训练了7个周期，而不是30个。</p>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/tab7.png" alt="Language-Table Performance" class="img-large">
-                        <figcaption>表7：使用Adam和SGD预训练的ResNet模型的微调性能</figcaption>
-                    </figure>
-                </div>
-                <h4>附录B.1 Training</h4>
-                <p>表3总结了我们不同模型的训练设置。我们发现在ImageNet上从头开始训练模型时，强正则化是关键。Dropout（如果使用）在除了qkv投影之外的每个密集层之后，以及在将位置嵌入添加到块嵌入之后直接应用。混合模型的训练设置与其ViT对应模型完全相同。最后，所有训练都是在224x224的分辨率下完成的。</p>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/tab3.png" alt="Language-Table Performance">
-                        <figcaption>表3：训练的超参数。所有模型均使用批量大小为4096进行训练，并采用10k步的学习率预热策略。对于ImageNet数据集，我们发现额外应用全局范数为1的梯度裁剪是有益的。训练分辨率为224。</figcaption>
-                    </figure>
-                </div>
-                <h4>附录B.1.1 Fine-Tuning</h4>
-                <p>我们使用动量为0.9的SGD对所有ViT模型进行微调。我们在学习率上进行了一个小的网格搜索，学习率范围见表4。为此，我们使用训练集中的小子集（Pets和Flowers为10%，CIFAR为2%，ImageNet为1%）作为开发集，并在剩余数据上进行训练。对于最终结果，我们在整个训练集上训练，并在相应的测试数据上进行评估。对于ResNet和混合模型的微调，我们使用完全相同的设置，唯一的例外是在ImageNet上，我们在学习率搜索中添加了另一个值0.06。</p>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/tab4.png" alt="Language-Table Performance" class="img-large">
-                        <figcaption>表4：微调的超参数。所有模型均采用余弦学习率衰减进行微调，批量大小为512，无权重衰减，并在全局范数为1处进行梯度裁剪。如未特别说明，微调分辨率为384。</figcaption>
-                    </figure>
-                </div>
-            </div>
-            <p>对于表2中的ImageNet结果，我们在更高的分辨率下进行微调：ViT-L/16为512，ViT-H/14为518，并且还使用了Polyak & Juditsky（1992）平均法，因子为0.9999（Ramachandran et al., 2019; Wang et al., 2020b）。</p>
-            <div class="figure-caption">
-                <figure>
-                    <img src="./ViT_figs/tab2.png" alt="Language-Table Performance">
-                    <figcaption>表2：与当前主流图像分类基准的对比。我们报告了在三个微调运行中平均得到的准确率的均值和标准差。在所有数据集上，使用JFT-300M数据集预训练的VisionTransformer模型均优于基于ResNet的基线模型，同时所需的预训练计算资源也显著减少。使用较小的公开ImageNet-21k数据集预训练的ViT模型同样表现良好。*Touvron等人（2020）报告的略微改进的88.5%结果。</figcaption>
-                </figure>
-            </div>
-            <p><strong>指标 (Metrics)。</strong>我们通过小样本（few-shot）或微调准确率来报告在下游数据集上的结果。微调准确率捕捉了每个模型在相应数据集上微调后的性能。小样本准确率是通过解决一个正则化最小二乘回归问题获得的，该问题将一部分训练图像的（冻结）表示映射到\(\{-1, 1\}^K\)的目标向量。这种形式使我们能够以闭式解的形式恢复精确解。虽然我们主要关注微调性能，但我们有时会使用线性小样本准确率进行快速的即时评估，因为在这些情况下进行微调成本太高。</p>
+            <p><strong>与 DeiT 的比较</strong> 使用 Cascade Mask R-CNN 框架的 DeiT-S 的性能如表 2(b) 所示。Swin-T 的结果比 DeiT-S 高出 +2.5 box AP 和 +2.3 mask AP，模型大小相似（86M vs. 80M），推理速度显著更高（15.3 FPS vs. 10.4 FPS）。DeiT 较低的推理速度主要是由于其对输入图像大小的二次方复杂度。</p>
+            <p><strong>与之前最先进技术的比较</strong> 表 2(c) 比较了我们的最佳结果与之前的最先进模型。我们最好的模型在 COCO test-dev 上达到了 58.7 box AP 和 51.1 mask AP，超过了之前的最佳结果，分别高出 +2.7 box AP（Copy-paste 无外部数据）和 +2.6 mask AP (DetectoRS)。</p>
 
-            <h4>4.2. Comparison to State of the Art</h4>
-            <p>我们首先将我们最大的模型——ViT-H/14和ViT-L/16——与文献中顶尖的CNN进行比较。第一个比较对象是Big Transfer (BiT)（Kolesnikov et al., 2020），它使用大型ResNet进行监督迁移学习。第二个是Noisy Student（Xie et al., 2020），这是一个在ImageNet和移除了标签的JFT-300M上使用半监督学习训练的大型EfficientNet。目前，Noisy Student在ImageNet上是业界顶尖，而BiT-L在本文报告的其他数据集上是顶尖。所有模型都在TPUv3硬件上进行了训练，我们报告了预训练它们所需的TPUv3-核心-天数，即用于训练的TPUv3核心数（每个芯片2个核心）乘以训练天数。</p>
-            <p>表2显示了结果。在JFT-300M上预训练的较小的ViT-L/16模型在所有任务上都优于BiT-L（它也在同一数据集上预训练），同时训练所需的计算资源要少得多。更大的模型ViT-H/14进一步提升了性能，尤其是在更具挑战性的数据集上——ImageNet、CIFAR-100和VTAB套件。有趣的是，这个模型预训练所需的计算量仍然远少于之前的业界顶尖水平。然而，我们注意到预训练效率不仅受架构选择的影响，还受其他参数如训练计划、优化器、权重衰减等的影响。我们在4.4节中提供了不同架构在性能与计算成本方面的受控研究。最后，在较小的公开数据集ImageNet-21k上预训练的ViT-L/16模型在大多数数据集上也表现良好，同时预训练所需的资源更少：它可以使用一个标准的云TPUv3（8个核心）在大约30天内完成训练。</p>
-            <p>图2分解了VTAB任务到它们各自的组，并与该基准上以前的SOTA方法进行比较：BiT，VIVI——一个在ImageNet和Youtube上共同训练的ResNet（Tschannen et al., 2020），以及S4L——在ImageNet上进行监督加半监督学习（Zhai et al., 2019a）。ViT-H/14在自然和结构化任务上优于BiT-R152x4和其他方法。在专业任务上，排名前两位的模型性能相似。</p>
+            <h4>4.3. Semantic Segmentation on ADE20K</h4>
+            <p><strong>设置</strong> ADE20K 是一个广泛使用的语义分割数据集，涵盖了 150 种语义类别。它总共有 25K 张图像，其中 20K 用于训练，2K 用于验证，另外 3K 用于测试。我们利用 UperNet 在 mmseg 中作为我们的基础框架，因其高效。更多细节在附录中介绍。</p>
+            <p><strong>结果</strong> 表 3 列出了不同方法/骨干网络对的 mIoU、模型大小 (#param)、FLOPs 和 FPS。从这些结果可以看出，Swin-S 比具有相似计算成本的 DeiT-S 高出 +5.3 mIoU (49.3 vs. 44.0)。它也比 ResNet-101 高出 +4.4 mIoU，比 ResNeSt-101 高出 +2.4 mIoU。我们经过 ImageNet-22K 预训练的 Swin-L 模型在 val 集上达到了 53.5 mIoU，比之前的最佳模型高出 +3.2 mIoU (SETR 的 50.3 mIoU，其模型尺寸更大)。</p>
             <div class="figure-caption">
                 <figure>
-                    <img src="./ViT_figs/fig2.png" alt="Language-Table Performance">
-                    <figcaption>图2：VTAB在自然、专业和结构化任务组中的性能分解。</figcaption>
+                    <img src="./SwinTransformer_figs/tab3.png" alt="Language-Table Performance">
+                    <figcaption>表3：ADE20K val 和 test 集上的语义分割结果。‡ 表示使用额外的反卷积层来产生分层的特征图。‡ 表示模型在 ImageNet-22K 上进行了预训练。</figcaption>
                 </figure>
             </div>
 
-            <h4>4.3. Pre-training Data Requirements</h4>
-            <p>Vision Transformer在大型JFT-300M数据集上预训练时表现良好。与ResNet相比，它具有更少的视觉归纳偏见，那么数据集大小到底有多关键呢？我们进行了两组实验。</p>
-            <p>首先，我们在规模递增的数据集上预训练ViT模型：ImageNet、ImageNet-21k和JFT-300M。为了提升在较小数据集上的性能，我们优化了三个基本的正则化参数——权重衰减、dropout和标签平滑。图3显示了微调到ImageNet后的结果（其他数据集上的结果见表5）²。当在最小的数据集ImageNet上预训练时，尽管有（适度的）正则化，ViT-Large模型的表现仍不如ViT-Base模型。在ImageNet-21k上预训练时，它们的性能相似。只有在JFT-300M上，我们才能看到更大模型的全部好处。图3还显示了不同大小的BiT模型所跨越的性能区域。BiT CNN在ImageNet上优于ViT，但在更大数据集上，ViT反超了。</p>
-            <div class="appendix-box">
-                <p>请注意，ImageNet预训练的模型也进行了微调，但是再次在ImageNet上。这是因为微调期间分辨率的增加会提高性能。</p>
-            </div>
+            <h4>4.4. Ablation Study</h4>
+            <p>在本节中，我们对提出的 Swin Transformer 的重要设计元素进行消融研究，使用 ImageNet-1K 图像分类、COCO 目标检测上的 Cascade Mask R-CNN 和 ADE20K 语义分割上的 UperNet。</p>
+            <p><strong>移动窗口</strong> 移动窗口方法在三个任务上的消融研究报告在表 4 中。采用移动窗口分区的 Swin-T 在 ImageNet-1K 上比在每个阶段都建立在单一窗口分区上的对应模型高出 +1.1% 的 top-1 准确率，在 COCO 上高出 +2.8 box AP/+2.2 mask AP，在 ADE20K 上高出 +2.8 mIoU。结果表明使用移动窗口来建立前一层窗口之间的连接是有效的。移动窗口的延迟开销也很小，如表 5 所示。</p>
             <div class="figure-caption">
                 <figure>
-                    <img src="./ViT_figs/fig3.png" alt="Language-Table Performance" class="img-large">
-                    <figcaption>图3：向ImageNet的迁移。当在小数据集上预训练时，大型ViT模型的表现比BiT ResNet（阴影区域）差，但当在更大数据集上预训练时，它们大放异彩。类似地，随着数据集的增长，较大的ViT变体也超越了较小的变体。</figcaption>
+                    <img src="./SwinTransformer_figs/tab4.png" alt="Language-Table Performance" class="img-large">
+                    <figcaption>表4：在三个基准测试中对移动窗口方法和不同位置嵌入方法的消融研究，使用 Swin-T 架构。w/o shifting：所有自注意力模块采用常规窗口分区，不移动；abs. pos.：ViT 的绝对位置嵌入项；rel. pos.：默认设置，带有一个额外的相对位置偏置项（见公式(4)）；app.：公式(4)中的第一个缩放点积项。</figcaption>
                 </figure>
             </div>
             <div class="figure-caption">
                 <figure>
-                    <img src="./ViT_figs/tab5.png" alt="Language-Table Performance">
-                    <figcaption>表5：在ImageNet、ImageNet-21k或JFT300M上预训练的Vision Transformer在各种数据集上的Top1准确率（百分比）。这些数值对应于正文图3。模型在384分辨率下进行微调。请注意，ImageNet的结果未使用额外的技术（Polyak平均和512分辨率图像）计算，这些技术用于实现表2中的结果。</figcaption>
+                    <img src="./SwinTransformer_figs/tab5.png" alt="Language-Table Performance">
+                    <figcaption>表5：在V100 GPU上不同自注意力计算方法和实现的真实速度。</figcaption>
                 </figure>
             </div>
-            <p>其次，我们在9M、30M和90M的随机子集以及完整的JFT-300M数据集上训练我们的模型。我们不对较小的子集进行额外的正则化，并对所有设置使用相同的超参数。这样，我们评估的是模型的内在属性，而不是正则化的效果。不过，我们确实使用了早停（early-stopping），并报告了训练期间达到的最佳验证准确率。为了节省计算，我们报告线性小样本准确率而不是完整的微调准确率。图4包含了结果。在较小的数据集上，与计算成本相当的ResNet相比，Vision Transformer更容易过拟合。例如，ViT-B/32比ResNet50稍快；它在9M子集上的表现要差得多，但在90M+子集上表现更好。ResNet152x2和ViT-L/16的情况也是如此。这一结果强化了这样一个直觉：卷积归纳偏见对于较小的数据集是有用的，但对于较大数据集，直接从数据中学习相关模式是充分的，甚至是有益的。</p>
+            <p><strong>相对位置偏置</strong> 表 4 比较了不同位置嵌入方法的比较。具有相对位置偏置的 Swin-T 在 ImageNet-1K 上比没有位置编码和有绝对位置嵌入的分别高出 +1.2%/+0.8% 的 top-1 准确率，在 COCO 上高出 +1.3/+1.5 box AP 和 +1.1/+1.3 mask AP，在 ADE20K 上高出 +2.3/+2.9 mIoU，这表明了相对位置偏置的有效性。还要注意的是，虽然包含绝对位置嵌入可以提高图像分类准确率 (+0.4%)，但它会损害目标检测和语义分割（在 COCO 上 -0.2 box/mask AP，在 ADE20K 上 -0.6 mIoU）。虽然最近的 ViT/DeiT 模型在图像分类中放弃了平移不变性，即使它早已被证明对视觉建模至关重要，但我们发现，鼓励某些平移不变性的归纳偏置对于通用目的的视觉建模仍然是可取的，特别是对于目标检测和语义分割等密集预测任务。</p>
+            <p><strong>不同的自注意力方法</strong> 表 5 比较了不同自注意力计算方法和实现的实际速度。我们的循环实现在硬件上比朴素的填充方法更高效，特别是在更深的阶段。总的来说，它在 Swin-T、Swin-S 和 Swin-B 上分别带来了 13%、18% 和 18% 的加速。基于提出的移动窗口方法构建的自注意力模块比在四个网络阶段上基于滑动窗口的朴素/核实现分别高效 40.8×/2.5×, 20.2×/2.5×, 9.3×/2.1× 和 7.6×/1.8×。总的来说，基于移动窗口构建的 Swin Transformer 架构比基于滑动窗口构建的变体在 Swin-T、Swin-S 和 Swin-B 上分别快 4.1/1.5, 4.0/1.5, 3.6/1.5 倍。表 6 比较了它们在三个任务上的准确率，显示它们在视觉建模中具有相似的准确率。与 Performer[15]（最快的 Transformer 架构之一，见）相比，提出的基于移动窗口的自注意力计算和整体 Swin Transformer 架构稍快（见表 5），同时使用 Swin-T 在 ImageNet-1K 上比 Performer 取得了 +2.3% 的 top-1 准确率（见表 6）。</p>
             <div class="figure-caption">
                 <figure>
-                    <img src="./ViT_figs/fig4.png" alt="Language-Table Performance" class="img-large">
-                    <figcaption>图4：在ImageNet上相对于预训练规模的线性小样本评估。ResNet在较小的预训练数据集上表现更好，但比ViT更早达到瓶颈，而ViT在更大的预训练数据上表现更好。ViT-b是ViT-B所有隐藏维度减半的版本。</figcaption>
+                    <img src="./SwinTransformer_figs/tab6.png" alt="Language-Table Performance" class="img-large">
+                    <figcaption>表6：在三个基准测试中使用不同自注意力计算方法的 Swin Transformer 的准确率。</figcaption>
                 </figure>
             </div>
-            <p>总的来说，ImageNet上的小样本结果（图4）以及VTAB上的低数据量结果（表2）对于极低数据量的迁移任务来说似乎很有希望。对ViT的小样本属性进行进一步分析是未来一个令人兴奋的研究方向。</p>
 
-            <h4>4.4. Scaling Study</h4>
-            <p>我们通过评估从JFT-300M迁移的性能，对不同模型进行了一项受控的扩展性研究。在这种设置下，数据大小不会成为模型性能的瓶颈，我们评估的是性能与每个模型预训练成本的关系。模型集包括：7个ResNet，R50x1、R50x2、R101x1、R152x1、R152x2，预训练7个周期，外加R152x2和R200x3预训练14个周期；6个Vision Transformer，ViT-B/32、B/16、L/32、L/16，预训练7个周期，外加L/16和H/14预训练14个周期；以及5个混合模型，R50+ViT-B/32、B/16、L/32、L/16，预训练7个周期，外加R50+ViT-L/16预训练14个周期（对于混合模型，模型名称末尾的数字代表ResNet主干网络中的总下采样率，而不是块大小）。</p>
-            <p>图5包含了迁移性能与总预训练计算量的关系（关于计算成本的细节见附录D.5）。每个模型的详细结果在附录的表6中提供。可以观察到几个模式。首先，Vision Transformer在性能/计算权衡上主导了ResNet。ViT使用大约2-4倍少的计算量就能达到相同的性能（在5个数据集上平均）。其次，混合模型在小的计算预算下略微优于纯ViT，但对于更大的模型，这种差异消失了。这个结果有些出人意料，因为人们可能期望卷积局部特征处理在任何大小的ViT上都有帮助。第三，Vision Transformer在尝试的范围内似乎没有饱和，这为未来的扩展工作提供了动力。</p>
-            <div class="figure-caption">
-                <figure>
-                    <img src="./ViT_figs/fig5.png" alt="Language-Table Performance">
-                    <figcaption>图5：不同架构的性能与预训练计算量对比：Vision Transformer、ResNet和混合模型。Vision Transformer通常在相同的计算预算下优于ResNet。混合模型在较小的模型尺寸上改进了纯Transformer，但对于较大的模型，差距消失了。</figcaption>
-                </figure>
-            </div>
             <div class="appendix-box">
-                <h4>附录D.5 Empirical Computational Costs</h4>
-                <p>我们还对我们硬件上架构的实际速度感兴趣，这并不总能被理论FLOPs很好地预测，因为像通道宽度和缓存大小等细节会产生影响。为此，我们在TPUv3加速器上对感兴趣的主要模型进行了推理速度计时；推理和反向传播速度之间的差异是一个与模型无关的常数因子。</p>
-                <p>图 12 (左) 显示了每个内核每秒可以处理多少张图像，这取决于不同的输入大小。 每个数据点都是在广泛的批量大小下测量的峰值性能。 如您所见，理论上的二次方平方扩展与图像大小相关联，仅在最大的模型中才刚刚开始出现在最大分辨率时。</p>
-                <p>另一个感兴趣的量是每个模型可以放在一个核心上的最大批次大小，对于扩展到大型数据集来说，更大的批量大小更好。图 12 ( 右 ) 展示了同一组模型的这一指标。这表明在内存效率方面，大维特模型比残差网络模型有明显优势。</p>
+                <h4>附录A1. Detailed Architectures</h4>
+                <p>详细的架构规格如表 7 所示，其中假设所有架构的输入图像尺寸均为 224x224。</p>
                 <div class="figure-caption">
                     <figure>
-                        <img src="./ViT_figs/fig12.png" alt="Language-Table Performance">
-                        <figcaption>图12：左图：不同架构在各种输入尺寸下的实际运行时间。ViT模型的速度与类似的ResNet相当。右图：在不同架构和输入尺寸下，设备上可容纳的最大每核批量大小。显然，ViT模型具有更高的内存效率</figcaption>
+                        <img src="./SwinTransformer_figs/tab7.png" alt="Language-Table Performance">
+                        <figcaption>表7：详细架构规格。</figcaption>
                     </figure>
                 </div>
-            </div>
-            <div class="figure-caption">
-                <figure>
-                    <img src="./ViT_figs/tab6.png" alt="Language-Table Performance">
-                    <figcaption>表6：模型规模扩展实验的详细结果。这些结果对应于主论文中的图5。我们展示了在多个数据集上的迁移准确率，以及预训练所需的计算量（以exa-FLOPs为单位）。</figcaption>
-                </figure>
-            </div>
+                <ul>
+                    <li>"Concat n x n" 指的是将一个 patch（图像块）中 n x n 个相邻特征进行拼接。该操作会导致特征图以 n 的倍率进行下采样。</li>
+                    <li>"96-d" 表示一个输出维度为 96 的线性层。</li>
+                    <li>"win. sz. 7 x 7" 表示一个窗口大小为 7x7 的多头自注意力模块。</li>
+                </ul>
 
-            <h4>4.5. Inspecting Vision Transformer</h4>
-            <p>为了开始理解Vision Transformer如何处理图像数据，我们分析了它的内部表示。Vision Transformer的第一层将展平的块线性投影到一个较低维的空间（公式1）。图7（左）显示了学习到的嵌入滤波器的顶层主成分。这些成分类似于用于对每个块内精细结构进行低维表示的合理基函数。</p>
-            <div class="figure-caption">
-                <figure>
-                    <img src="./ViT_figs/fig7.png" alt="Language-Table Performance">
-                    <figcaption>图7：左图：ViT-L/32模型中RGB值初始线性嵌入的滤波器。中图：ViT-L/32模型位置嵌入的相似性。方格显示了具有指定行和列的图像块的位置嵌入与其他所有图像块位置嵌入之间的余弦相似度。右图：不同网络深度和注意力头下被关注区域的大小。每个点表示在某一网络层上16个注意力头之一对所有图像的平均注意力距离。更多细节请参见附录D.7。</figcaption>
-                </figure>
-            </div>
-            <p>投影之后，一个学习到的位置嵌入被添加到块表示中。图7（中）显示，模型学会了在位置嵌入的相似性中编码图像内的距离，即，位置上更近的块倾向于有更相似的位置嵌入。此外，行-列结构出现了；在同一行/列的块有相似的嵌入。最后，对于更大的网格，有时会出现正弦结构（附录D）。位置嵌入学会了表示2D图像拓扑，这解释了为什么手工制作的2D感知嵌入变体没有带来改进（附录D.4）。</p>
-            <p>自注意力机制允许ViT即使在最底层也能整合整个图像的信息。我们研究了网络在多大程度上利用了这种能力。具体来说，我们根据注意力权重计算了信息被整合的平均图像空间距离（图7，右）。这个“注意力距离”类似于CNN中的感受野大小。我们发现，一些头在最底层就已经关注了大部分图像，这表明全局信息整合的能力确实被模型使用了。其他注意力头在底层一直保持着很小的注意力距离。这种高度局部化的注意力在应用了ResNet作为Transformer前置的混合模型中不那么明显（图7，右），这表明它可能起着与早期卷积层类似的功能。此外，注意力距离随着网络深度的增加而增加。总的来说，我们发现模型关注的是对于分类具有语义相关性的图像区域（图6）。</p>
-            <div class="figure-caption">
-                <figure>
-                    <img src="./ViT_figs/fig6.png" alt="Language-Table Performance" class="img-small">
-                    <figcaption>图6：从输出标记到输入空间的注意力代表性示例。详见附录D.7。</figcaption>
-                </figure>
-            </div>
-            <div class="appendix-box">
-                <h4>附录D.7 Attention Distance</h4>
-                <p>为了理解ViT如何使用自注意力在整个图像上整合信息，我们分析了不同层级上注意力权重跨越的平均距离（图11）。这个“注意力距离”类似于CNN中的感受野大小。在较低层，不同头的平均注意力距离变化很大，一些头关注图像的大部分区域，而另一些则关注查询位置或其附近的小区域。随着深度的增加，所有头的注意力距离都会增加。在网络的后半部分，大多数头都会广泛地关注所有标记。</p>
+                <h4>附录A2. Detailed Experimental Settings</h4>
+                <h4>附录A2.1. Image classification on ImageNet-1K</h4>
+                <p>图像分类任务是通过在最后一个阶段的输出特征图上应用一个全局平均池化层，然后接一个线性分类器来完成的。我们发现，这种策略与 ViT 和 DeiT 中使用的额外 class token（类别令牌）一样准确。在评估时，我们报告的是使用单个裁切（single crop）的 Top-1 准确率。</p>
+                <p><strong>常规 ImageNet-1K 训练</strong> 训练设置主要遵循。对于所有模型变体，我们采用 224² 的默认输入图像分辨率。对于其他分辨率，如 384²，我们微调在 224² 分辨率上训练好的模型，而不是从头开始训练，以减少 GPU 消耗。</p>
+                <p>当使用 224² 输入从头训练时，我们采用 AdamW 优化器训练 300 个周期，使用带有 20 个周期线性预热（warm-up）的余弦衰减学习率调度器。批次大小为 1024，初始学习率为 0.001，权重衰减为 0.05，并使用最大范数为 1 的梯度裁剪。我们采纳了 中的大部分增强和正则化策略，包括 RandAugment、Mixup、Cutmix、随机擦除（random erasing） 和随机深度（stochastic depth），但没有使用重复增强（repeated augmentation） 和指数移动平均（Exponential Moving Average, EMA），因为它们并未提升性能。请注意，这与 相反，在 中，重复增强对于稳定 ViT 的训练至关重要。对于更大的模型，我们采用了递增的随机深度增强，即 Swin-T、Swin-S 和 Swin-B 的随机深度率分别为 0.2、0.3 和 0.5。</p>
+                <p><strong>使用更大分辨率输入进行微调</strong> 我们使用 AdamW 优化器进行 30 个周期的微调，恒定学习率为 10⁻⁵，权重衰减为 10⁻⁸，并使用与第一阶段相同的数据增强和正则化方法，除了将随机深度率设置为 0.1。</p>
+                <p><strong>ImageNet-22K 预训练</strong> 我们也在更大的 ImageNet-22K 数据集上进行预训练，该数据集包含 1420 万张图像和 22K 个类别。训练分两个阶段完成。第一阶段使用 224² 输入，我们采用 AdamW 优化器训练 90 个周期，使用带有 5 个周期线性预热的线性衰减学习率调度器。批次大小为 4096，初始学习率为 0.001，权重衰减为 0.01。在 ImageNet-1K 微调的第二阶段，我们使用 224²/384² 输入训练模型 30 个周期，批次大小为 1024，恒定学习率为 10⁻⁵，权重衰减为 10⁻⁸。</p>
+                
+                <h4>附录A2.2. Object detection on COCO</h4>
+                <p>在消融研究中，我们考虑了 mmdetection 中的四种典型目标检测框架：Cascade Mask R-CNN、ATSS、RepPoints v2 和 Sparse RCNN。对于这四种框架，我们采用相同的设置：多尺度训练（调整输入尺寸，使短边在 480 到 800 之间，长边最多为 1333）、AdamW 优化器（初始学习率 0.0001，权重衰减 0.05，批次大小 16），以及 3x 调度（36 个周期，学习率在第 27 和 33 个周期时衰减 10 倍）。</p>
+                <p>对于系统级比较，我们采用了一个改进的 HTC（表示为 HTC++），并结合了 instaboost、更强的多尺度训练（调整输入尺寸，使短边在 400 到 1400 之间，长边最多为 1600）、6x 调度（72 个周期，学习率在第 63 和 69 个周期时衰减 0.1 倍）、soft-NMS，以及在最后一个阶段的输出处附加一个额外的全局自注意力层，并使用 ImageNet-22K 预训练的模型作为初始化。</p>
+            
+                <h4>附录A2.3. Semantic segmentation on ADE20K</h4>
+                <p>ADE20K 是一个广泛使用的语义分割数据集，涵盖了 150 个语义类别。它总共有 25K 张图像，其中 20K 用于训练，2K 用于验证，另外 3K 用于测试。我们利用 mmsegmentation 中的 UperNet 作为我们的基础框架，因其高效率。</p>
+                <p>在训练中，我们使用 AdamW 优化器，初始学习率为 6 x 10⁻⁵，权重衰减为 0.01，一个使用线性学习率衰减的调度器，以及 1500 次迭代的线性预热。模型在 8 个 GPU 上进行训练，每个 GPU 2 张图像，共进行 160K 次迭代。对于数据增强，我们采用 mmsegmentation 中的默认设置，包括随机水平翻转、在 [0.5, 2.0] 比例范围内的随机缩放，以及随机光度失真。所有 Swin Transformer 模型都应用了比例为 0.2 的随机深度。Swin-T 和 Swin-S 在标准设置下使用 512x512 的输入进行训练。带有 ‡ 标记的 Swin-B 和 Swin-L 表示这些模型在 ImageNet-22K 上进行了预训练，并使用 640x640 的输入进行训练。</p>
+                <p>在推理时，采用多尺度测试，使用的分辨率是训练分辨率的 [0.5, 0.75, 1.0, 1.25, 1.5, 1.75] 倍。在报告测试分数时，遵循通用实践，将训练图像和验证图像都用于训练。</p>
+
+                <h4>附录A3. More Experiments</h4>
+                <h4>附录A3.1. Image classification with different input size</h4>
+                <p>表 8 列出了 Swin Transformer 在不同输入图像尺寸（从 224² 到 384²）下的性能。总的来说，更大的输入分辨率会带来更好的 Top-1 准确率，但推理速度会变慢。</p>
                 <div class="figure-caption">
                     <figure>
-                        <img src="./ViT_figs/fig11.png" alt="Language-Table Performance">
-                        <figcaption>图11：由头和网络深度决定的注意力区域大小。通过计算128张示例图像的注意力距离，即对查询像素与所有其他像素之间的距离进行加权平均（权重为注意力权重）。每个点表示在某一层中16个头之一对所有图像的平均注意力距离。图像宽度为224像素。</figcaption>
+                        <img src="./SwinTransformer_figs/tab8.png" alt="Language-Table Performance" class="img-large">
+                        <figcaption>表8：该表展示了 Swin-T, Swin-S, Swin-B 在 224², 256², 320², 384² 四种分辨率下的 Top-1 准确率和吞吐量（images/s）。</figcaption>
                     </figure>
                 </div>
-            </div>
 
-            <h4>4.6. Self-Supervision</h4>
-            <p>Transformer在NLP任务中表现出令人印象深刻的性能。然而，它们的成功很大程度上不仅源于其出色的可扩展性，还源于大规模的自监督预训练（Devlin et al., 2019; Radford et al., 2018）。我们还对掩码块预测（masked patch prediction）进行了初步探索以用于自监督，模仿了BERT中使用的掩码语言建模任务。通过自监督预训练，我们较小的ViT-B/16模型在ImageNet上达到了79.9%的准确率，比从头训练显著提高了2%，但仍比监督预训练低4%。附录B.1.2包含更多细节。我们把对对比预训练（contrastive pre-training）的探索留给未来的工作（Chen et al., 2020b; He et al., 2020; Bachman et al., 2019; Hénaff et al., 2020）。</p>
-            <div class="appendix-box">
-                <h4>附录B.1.2 Self-Supervision</h4>
-                <p>我们采用掩码块预测（masked patch prediction）目标来进行初步的自监督实验。为此，我们破坏50%的块嵌入，方法是将其替换为一个可学习的[mask]嵌入（80%）、一个随机的其他块嵌入（10%）或保持原样（10%）。这个设置与Devlin等人（2019）用于语言的设置非常相似。最后，我们使用它们各自的块表示来预测每个被破坏块的3位平均颜色（即总共512种颜色）。</p>
-                <p>我们在JFT上使用Adam优化器、基础学习率为2·10<sup>-4</sup>、10k步预热和余弦学习率衰减，对我们的自监督模型进行了1M步（约14个周期）的训练，批大小为4096。作为预训练的预测目标，我们尝试了以下设置：1）仅预测平均的3位颜色（即1个512类的预测），2）并行预测一个4×4下采样版本的16×16块的3位颜色（即16个512类的预测），3）使用L2损失对完整块进行回归（即对3个RGB通道的256个值进行回归）。令人惊讶的是，我们发现所有方法都效果不错，尽管L2略差。我们仅报告选项1）的最终结果，因为它显示出最好的小样本（few-shot）性能。我们也尝试了Devlin等人（2019）使用的15%的破坏率，但结果在我们的少样本指标上略差。</p>
-                <p>最后，我们想指出，我们实例化的掩码块预测并不需要如此巨大的预训练量或像JFT这样的大型数据集，就能在ImageNet分类上带来类似的性能增益。也就是说，我们观察到在100k预训练步数后，下游性能的收益递减，并且在ImageNet上预训练时也看到了类似的增益。</p>
+                <h4>附录A3.2. Different Optimizers for ResNe(X)t on COCO</h4>
+                <p>表 9 比较了 ResNe(X)t 主干网络在 COCO 目标检测任务上使用 AdamW 和 SGD 优化器的性能。比较中使用了 Cascade Mask R-CNN 框架。虽然 SGD 是 Cascade Mask R-CNN 框架的默认优化器，但我们通常观察到，用 AdamW 优化器替换 SGD 可以提高准确率，特别是对于较小的主干网络。因此，在与我们提出的 Swin Transformer 架构进行比较时，我们为 ResNe(X)t 主干网络使用 AdamW。</p>
+                <div class="figure-caption">
+                    <figure>
+                        <img src="./SwinTransformer_figs/tab9.png" alt="Language-Table Performance" class="img-large">
+                        <figcaption>表9：在 COCO 目标检测上，使用 Cascade Mask R-CNN 框架对 ResNe(X)t 主干网络进行 SGD 和 AdamW 优化器的比较。</figcaption>
+                    </figure>
+                </div>
+
+                <h4>附录A3.3. Swin MLP-Mixer</h4>
+                <p>我们将所提出的分层设计和移动窗口方法应用于 MLP-Mixer 架构，我们称之为 Swin-Mixer。表 10 展示了 Swin-Mixer 与原始 MLP-Mixer 架构 和一个后续工作 ResMLP 的性能比较。Swin-Mixer 的性能显著优于 MLP-Mixer（81.3% vs. 76.4%），同时计算预算略小（10.4G vs. 12.7G）。与 ResMLP 相比，它也具有更好的速度-准确率权衡。这些结果表明，我们提出的分层设计和移动窗口方法是具有普适性的。</p>
+                <div class="figure-caption">
+                    <figure>
+                        <img src="./SwinTransformer_figs/tab10.png" alt="Language-Table Performance" class="img-large">
+                        <figcaption>表10：该表对比了 MLP-Mixer-B/16, ResMLP-S24, ResMLP-B24 和多个 Swin-Mixer 变体的性能，包括参数量、FLOPs、吞吐量和 Top-1 准确率。</figcaption>
+                    </figure>
+                </div>
             </div>
 
             <h3>5. Conclusion</h3>
-            <p>我们探索了将Transformer直接应用于图像识别。与以往在计算机视觉中使用自注意力的工作不同，除了初始的块提取步骤外，我们没有在架构中引入图像特异性的归纳偏见。相反，我们将图像解释为一系列块，并使用NLP中标准的Transformer编码器来处理它。这种简单而可扩展的策略，在与大规模数据集上的预训练相结合时，效果出奇地好。因此，Vision Transformer在许多图像分类数据集上达到或超过了现有技术的水平，同时预训练的成本相对较低。</p>
-            <p>虽然这些初步结果令人鼓舞，但仍有许多挑战有待解决。一个挑战是将ViT应用于其他计算机视觉任务，如检测和分割。我们的结果，加上Carion等人（2020）的结果，表明了这一方法的前景。另一个挑战是继续探索自监督预训练方法。我们的初步实验显示了自监督预训练带来的改进，但在自监督和大规模监督预训练之间仍然存在很大差距。最后，进一步扩展ViT的规模可能会带来性能的提升。</p>
-            
-            <div class="appendix-box">
-                <h4>附录D.2 Transformer Shape</h4>
-                <p>我们对扩展Transformer架构的不同维度进行了消融研究，以找出哪些维度最适合扩展到非常大的模型。图8显示了不同配置在ImageNet上的5-shot性能。所有配置都基于一个具有8层、\(D=1024、D_{MLP}=2048\)和32的块大小的ViT模型，这是所有曲线的交点。我们可以看到，扩展深度带来了最大的改进，在64层之前都清晰可见。然而，在16层之后已经可以看到收益递减。有趣的是，扩展网络宽度似乎带来的变化最小。减小块大小从而增加有效序列长度，显示出无需引入新参数的惊人稳健改进。这些发现表明，计算量可能是比参数数量更好的性能预测指标，并且如果可能的话，扩展应优先考虑深度而非宽度。总的来说，我们发现按比例扩展所有维度会带来稳健的改进。</p>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/fig8.png" alt="Language-Table Performance">
-                        <figcaption>图8：视觉Transformer不同模型尺寸的缩放。</figcaption>
-                    </figure>
-                </div>
-                <h4>附录D.3 Head Type and Class Token</h4>
-                <p>为了尽可能接近原始的Transformer模型，我们使用了一个额外的[class]标记，它被作为图像表示。这个标记的输出然后通过一个带有tanh非线性单隐藏层的小型多层感知器（MLP）转换为类别预测。</p>
-                <p>这个设计继承自文本的Transformer模型，我们在整个主论文中都使用它。最初尝试只使用图像块嵌入，对其进行全局平均池化（GAP），然后接一个线性分类器——就像ResNet的最终特征图一样——效果非常差。然而，我们发现这既不是因为额外的标记，也不是因为GAP操作。相反，性能差异完全可以用对不同学习率的需求来解释，参见图9。</p>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/fig9.png" alt="Language-Table Performance">
-                        <figcaption>图9：类标记（class-token）与全局平均池化分类器的比较。两者表现相似，但需要不同的学习率。</figcaption>
-                    </figure>
-                </div>
-                <h4>附录D.6 Axial Attention</h4>
-                <p>轴向注意力是一种简单而有效的技术，用于在组织为多维张量的大型输入上运行自注意力。其基本思想是执行多个注意力操作，每个操作沿着输入张量的一个轴进行，而不是在展平版本的输入上应用一维注意力。我们修改了ViT以二维形状处理输入，并加入了轴向Transformer块。我们还实现了AxialResNet作为基线模型。如图13所示，Axial-ViT模型在性能上优于其ViT-B对应模型，但计算成本更高。对于AxialResNet，尽管在准确性/计算权衡方面看起来合理，但其朴素实现在TPU上非常慢。</p>
-                <div class="appendix-box">我们的实现基于 https://github.com/csrhddlam/axial-deeplab 中开源的 PyTorch 实现。在我们的实验中，我们重现了（Wang 等人，2020b）报告的准确率分数，然而，我们的实现与开源实现类似，在 TPU 上运行速度非常慢。因此，我们无法将其用于大规模的深入实验。这些可能通过精心优化的实现来解决。</div>
-                <p>此外，我们修改了 ViT 以处理二维形状的输入，而不是一维的补丁序列，并且在其中加入了轴向变压器块，在这里我们有一个行自注意力加上一个MLP，然后是一个列自注意力加上一个MLP。</p>
-                <p>图13展示了在 ImageNet 5shot linear 上，使用 JFT 数据集预训练时，Axial ResNet、Axial-ViT-B/32 和 Axial-ViT-B/16 的性能，以及计算成本（浮点运算次数和推理时间）。如我们所见，Axial-ViT-B/32 和 Axial-ViT-B/16 在性能上都优于其 ViT-B 对应模型，但代价是更多计算成本。这是因为，在轴对齐 ViT 模型中，每个带有全局自注意的 Transformer 块被两个轴对齐 Transformer 块所取代，一个是行自注意，另一个是列自注意，尽管在轴对齐情况下，自注意力作用于的序列长度较小，但每个轴对齐 ViT 块都有一个额外的全连接层 MLP。对于轴对齐 ResNet，虽然从精度/计算量权衡的角度来看似乎合理（图 13 左），但在 TPU 上，朴素实现非常缓慢（图 13 右）。</p>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/fig13.png" alt="Language-Table Performance">
-                        <figcaption>图13：基于轴向注意力（Axial-Attention）模型的性能，以ImageNet5-shot线性分类任务中的top-1准确率表示，并与它们的速度指标（以浮点运算次数FLOPs表示，左图）和推理时间（右图）进行对比。</figcaption>
-                    </figure>
-                </div>
-                <h4>附录D.8 Attention Maps</h4>
-                <p>为了计算注意力图，即将输出标记映射到输入空间（见图6和14），我们使用了Attention Rollout (Abnar & Zuidema, 2020)。简而言之，我们在所有头中平均 ViT-L/16 的注意力权重，然后递归地乘以所有层的权重矩阵。这解释了通过所有层对注意的混合。</p>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/fig14.png" alt="Language-Table Performance">
-                        <figcaption>图14：进一步示例注意力图，如图6所示（随机选择）。</figcaption>
-                    </figure>
-                </div>
-                <h4>附录D.9 Objectnet Results</h4>
-                <p>我们还在ObjectNet基准上评估了我们的旗舰模型ViT-H/14，遵循Kolesnikov等人（2020）的评估设置，取得了82.1%的top-5准确率和61.7%的top-1准确率。</p>
-                <he>附录D.10 VTAB Breakdown</he>
-                <p>表9显示了在VTAB-1k各项任务上取得的分数。</p>
-                <div class="figure-caption">
-                    <figure>
-                        <img src="./ViT_figs/tab9.png" alt="Language-Table Performance">
-                        <figcaption>表9：VTAB-1k在各任务上的性能分解。</figcaption>
-                    </figure>
-                </div>
-            </div>
-        
+            <p>本文提出了一种名为 Swin Transformer 的新型视觉 Transformer，它产生分层的特征表示，并且对输入图像大小具有线性的计算复杂度。Swin Transformer 在 COCO 目标检测和 ADE20K 语义分割上取得了最先进的性能，显著超过了之前最好的方法。我们希望 Swin Transformer 在各种视觉问题上的强大性能将鼓励对视觉和语言信号进行统一建模。作为 Swin Transformer 的一个关键元素，基于移动窗口的自注意力被证明在视觉问题上是有效和高效的，我们期待着研究它在自然语言处理中的应用。</p>
         </section>
 
         <!-- ====================================================================== -->
@@ -624,11 +550,17 @@
         <section id="code-analysis">
             <h2>论文重点实现解析</h2>
             <div class="code-analysis">
-                <h4>MLP</h4>
+                <h3>MLP</h3>
                 <pre><code class="python">
 class Mlp(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, 
-                    act_layer=nn.GELU, drop=0.):
+    def __init__(
+        self, 
+        in_features, 
+        hidden_features=None, 
+        out_features=None, 
+        act_layer=nn.GELU, 
+        drop=0.
+    ):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -646,7 +578,7 @@ class Mlp(nn.Module):
         return x
                 </code></pre>
 
-                <a name="Attention"><h4>Window Partition</h4></a>
+                <h3>Window Partition</h3>
                 <pre><code class="python">
 def window_partition(x, window_size):
     """
@@ -686,7 +618,7 @@ def window_partition(x, window_size):
     return windows
                 </code></pre>
 
-                <a name="Multi-Head Attention"><h4>Window Reverse</h4></a>
+                <h3>Window Reverse</h3>
                 <pre><code class="python">
 def window_reverse(windows, window_size, H, W):
     """
@@ -708,7 +640,9 @@ def window_reverse(windows, window_size, H, W):
     
     # 2. 重塑张量，这是 partition 中第4步的逆操作
     # 将 (B * num_windows, ws, ws, C) 变回 (B, H/ws, W/ws, ws, ws, C)
-    x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
+    x = windows.view(
+        B, H // window_size, W // window_size, window_size, window_size, -1
+    )
     
     # 3. 交换维度，这是 partition 中第3步的逆操作
     # 原始索引: (0, 1, 2, 3, 4, 5) -> B, H/ws, W/ws, ws, ws, C
@@ -722,10 +656,11 @@ def window_reverse(windows, window_size, H, W):
     return x
                 </code></pre>
 
-                <a name="Position-wise Feed-Forward Networks"><h4>Window Attention</h4></a>
+                <h3>Window Attention</h3>
                 <pre><code class="python">
 class WindowAttention(nn.Module):
-    r""" Window based multi-head self attention (W-MSA) module with relative position bias.
+    r""" 
+    Window based multi-head self attention (W-MSA) module with relative position bias.
     It supports both of shifted and non-shifted window.
 
     Args:
@@ -738,7 +673,16 @@ class WindowAttention(nn.Module):
         proj_drop (float, optional): Dropout ratio of output. Default: 0.0
     """
 
-    def __init__(self, dim, window_size, num_heads, ...):
+    def __init__(
+        self, 
+        dim, 
+        window_size, 
+        num_heads, 
+        qkv_bias=True, 
+        qk_scale=None, 
+        attn_drop=0., 
+        proj_drop=0.
+    ):
 
         super().__init__()
         self.dim = dim
@@ -754,7 +698,8 @@ class WindowAttention(nn.Module):
         # 宽度上的相对位置范围是 [-(Ww-1), Ww-1]，共 2*Ww-1 个值
         # 所以总共有 (2*Wh-1)*(2*Ww-1) 种相对位置组合
         self.relative_position_bias_table = nn.Parameter(
-            torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads))
+            torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads)
+        )
 
         # 2. 计算窗口内每个 token 的成对相对位置索引
         # 这部分代码只在初始化时运行一次，生成一个固定的索引，后续直接使用。
@@ -791,7 +736,8 @@ class WindowAttention(nn.Module):
         """
         Args:
             x: 输入特征，形状为 (num_windows*B, N, C)，其中 N = Wh*Ww
-            mask: 可选的掩码，用于 shifted window (SW-MSA)，形状为 (num_windows, Wh*Ww, Wh*Ww)
+            mask: 可选的掩码，用于 shifted window (SW-MSA)，
+                  形状为 (num_windows, Wh*Ww, Wh*Ww)
         """
         B_, N, C = x.shape
         
@@ -799,7 +745,9 @@ class WindowAttention(nn.Module):
         # self.qkv(x) -> (B_, N, 3*C)
         # reshape -> (B_, N, 3, num_heads, C_per_head)
         # permute -> (3, B_, num_heads, N, C_per_head)
-        qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        qkv = self.qkv(x).reshape(
+            B_, N, 3, self.num_heads, C // self.num_heads
+        ).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         # 2. 计算注意力分数 (Attention Score)
@@ -808,8 +756,8 @@ class WindowAttention(nn.Module):
 
         # 3. 添加相对位置偏置
         # 使用预先计算好的 relative_position_index 从偏置表 lookup
-        relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
-            N, N, -1)  # Wh*Ww,Wh*Ww,nH
+        relative_position_bias = 
+            self.relative_position_bias_table[self.relative_position_index.view(-1)].view(N, N, -1)  # Wh*Ww,Wh*Ww,nH
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
         # 将偏置加到注意力分数上，PyTorch 的广播机制会自动处理 B_ 维度
         attn = attn + relative_position_bias.unsqueeze(0)
@@ -836,9 +784,25 @@ class WindowAttention(nn.Module):
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
+
+    def extra_repr(self) -> str:
+        return f'dim={self.dim}, window_size={self.window_size}, num_heads={self.num_heads}'
+
+    def flops(self, N):
+        # calculate flops for 1 window with token length of N
+        flops = 0
+        # qkv = self.qkv(x)
+        flops += N * self.dim * 3 * self.dim
+        # attn = (q @ k.transpose(-2, -1))
+        flops += self.num_heads * N * (self.dim // self.num_heads) * N
+        #  x = (attn @ v)
+        flops += self.num_heads * N * N * (self.dim // self.num_heads)
+        # x = self.proj(x)
+        flops += N * self.dim * self.dim
+        return flops
                 </code></pre>
 
-                <a name="Embeddings and Softmax"><h4>Embeddings and Softmax</h4></a>
+                <h3>Embeddings and Softmax</h3>
                 <pre><code class="python">
 class Embeddings(nn.Module):
     def __init__(self, d_model, vocab):
@@ -877,29 +841,146 @@ print(f'{word} 的嵌入内容: {word_embedding}')
 #        dtype=torch.bfloat16, grad_fn=<\IndexBackward0>)
                 </code></pre>
                 </div>
-
-                <a name="Positional Encoding"><h4>Positional Encoding</h4></a>
+                <h3>SwinTransformer Block</h3>
                 <pre><code class="python">
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, dropout, max_len=5000):
-        super(PositionalEncoding, self).__init__()
-        self.dropout = nn.Dropout(p=dropout)
+class SwinTransformerBlock(nn.Module):
+    r""" Swin Transformer Block.
 
-        # Compute the positional encodings once in log space.
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len).unsqueeze(1)
-        div_term = torch.exp(
-            torch.arange(0, d_model, 2) * -(math.log(10000.0) / d_model)
-        )
-        pe[:, 0::2] = torch.sin(position * div_term) # 偶数索引列填充
-        pe[:, 1::2] = torch.cos(position * div_term) # 奇数索引列填充
-        pe = pe.unsqueeze(0)
-        self.register_buffer("pe", pe)
+    Args:
+        dim (int): Number of input channels.
+        input_resolution (tuple[int]): Input resulotion.
+        num_heads (int): Number of attention heads.
+        window_size (int): Window size.
+        shift_size (int): Shift size for SW-MSA.
+        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim.
+        qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
+        qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set.
+        drop (float, optional): Dropout rate. Default: 0.0
+        attn_drop (float, optional): Attention dropout rate. Default: 0.0
+        drop_path (float, optional): Stochastic depth rate. Default: 0.0
+        act_layer (nn.Module, optional): Activation layer. Default: nn.GELU
+        norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
+        fused_window_process (bool, optional): If True, use one kernel to fused window shift & window partition for acceleration, similar for the reversed part. Default: False
+    """
+
+    def __init__(self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
+                 mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., 
+                 drop_path=0.,act_layer=nn.GELU, norm_layer=nn.LayerNorm,
+                 fused_window_process=False):
+        super().__init__()
+        self.dim = dim
+        self.input_resolution = input_resolution
+        self.num_heads = num_heads
+        self.window_size = window_size
+        self.shift_size = shift_size
+        self.mlp_ratio = mlp_ratio
+        if min(self.input_resolution) <= self.window_size:
+            # if window size is larger than input resolution, we don't partition windows
+            self.shift_size = 0
+            self.window_size = min(self.input_resolution)
+        assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
+
+        self.norm1 = norm_layer(dim)
+        self.attn = WindowAttention(
+            dim, window_size=to_2tuple(self.window_size), num_heads=num_heads,
+            qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.norm2 = norm_layer(dim)
+        mlp_hidden_dim = int(dim * mlp_ratio)
+        self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
+
+        if self.shift_size > 0:
+            # calculate attention mask for SW-MSA
+            H, W = self.input_resolution
+            img_mask = torch.zeros((1, H, W, 1))  # 1 H W 1
+            h_slices = (slice(0, -self.window_size),
+                        slice(-self.window_size, -self.shift_size),
+                        slice(-self.shift_size, None))
+            w_slices = (slice(0, -self.window_size),
+                        slice(-self.window_size, -self.shift_size),
+                        slice(-self.shift_size, None))
+            cnt = 0
+            for h in h_slices:
+                for w in w_slices:
+                    img_mask[:, h, w, :] = cnt
+                    cnt += 1
+
+            mask_windows = window_partition(img_mask, self.window_size)  # nW, window_size, window_size, 1
+            mask_windows = mask_windows.view(-1, self.window_size * self.window_size)
+            attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)
+            attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
+        else:
+            attn_mask = None
+
+        self.register_buffer("attn_mask", attn_mask)
+        self.fused_window_process = fused_window_process
 
     def forward(self, x):
-        x = x + self.pe[:, : x.size(1)].requires_grad_(False)
-        return self.dropout(x)
-                </code></pre>
+        H, W = self.input_resolution
+        B, L, C = x.shape
+        assert L == H * W, "input feature has wrong size"
+
+        shortcut = x
+        x = self.norm1(x)
+        x = x.view(B, H, W, C)
+
+        # cyclic shift
+        if self.shift_size > 0:
+            if not self.fused_window_process:
+                shifted_x = torch.roll(x, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
+                # partition windows
+                x_windows = window_partition(shifted_x, self.window_size)  # nW*B, window_size, window_size, C
+            else:
+                x_windows = WindowProcess.apply(x, B, H, W, C, -self.shift_size, self.window_size)
+        else:
+            shifted_x = x
+            # partition windows
+            x_windows = window_partition(shifted_x, self.window_size)  # nW*B, window_size, window_size, C
+
+        x_windows = x_windows.view(-1, self.window_size * self.window_size, C)  # nW*B, window_size*window_size, C
+
+        # W-MSA/SW-MSA
+        attn_windows = self.attn(x_windows, mask=self.attn_mask)  # nW*B, window_size*window_size, C
+
+        # merge windows
+        attn_windows = attn_windows.view(-1, self.window_size, self.window_size, C)
+
+        # reverse cyclic shift
+        if self.shift_size > 0:
+            if not self.fused_window_process:
+                shifted_x = window_reverse(attn_windows, self.window_size, H, W)  # B H' W' C
+                x = torch.roll(shifted_x, shifts=(self.shift_size, self.shift_size), dims=(1, 2))
+            else:
+                x = WindowProcessReverse.apply(attn_windows, B, H, W, C, self.shift_size, self.window_size)
+        else:
+            shifted_x = window_reverse(attn_windows, self.window_size, H, W)  # B H' W' C
+            x = shifted_x
+        x = x.view(B, H * W, C)
+        x = shortcut + self.drop_path(x)
+
+        # FFN
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
+
+        return x
+
+    def extra_repr(self) -> str:
+        return f"dim={self.dim}, input_resolution={self.input_resolution}, num_heads={self.num_heads}, " \
+               f"window_size={self.window_size}, shift_size={self.shift_size}, mlp_ratio={self.mlp_ratio}"
+
+    def flops(self):
+        flops = 0
+        H, W = self.input_resolution
+        # norm1
+        flops += self.dim * H * W
+        # W-MSA/SW-MSA
+        nW = H * W / self.window_size / self.window_size
+        flops += nW * self.attn.flops(self.window_size * self.window_size)
+        # mlp
+        flops += 2 * H * W * self.dim * self.dim * self.mlp_ratio
+        # norm2
+        flops += self.dim * H * W
+        return flops                
 
             </div>
         </section>
